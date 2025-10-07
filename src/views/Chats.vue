@@ -80,6 +80,21 @@
         
         <div class="chat-content">
           <p>{{ chat.content }}</p>
+          
+          <div v-if="chat.attachments && chat.attachments.length" class="chat-attachments">
+            <div 
+              v-for="(attachment, index) in chat.attachments" 
+              :key="index"
+              class="attachment-preview"
+            >
+              <img 
+                v-if="attachment.type === 'image'"
+                :src="attachment.url" 
+                class="attachment-thumbnail"
+                @click="previewImage(attachment.url)"
+              />
+            </div>
+          </div>
         </div>
       </el-card>
     </div>
@@ -127,6 +142,41 @@
             placeholder="请输入聊天内容"
           />
         </el-form-item>
+        <el-form-item label="附件">
+          <div class="attachment-upload">
+            <div v-if="formData.attachments && formData.attachments.length" class="attachment-preview">
+              <div 
+                v-for="(attachment, index) in formData.attachments" 
+                :key="index"
+                class="attachment-item"
+              >
+                <img 
+                  v-if="attachment.type === 'image'"
+                  :src="attachment.url" 
+                  class="attachment-thumbnail"
+                />
+                <div class="attachment-info">
+                  <span>{{ attachment.name }}</span>
+                  <el-button type="text" size="small" @click="removeAttachment(index)">
+                    <el-icon><Delete /></el-icon>
+                  </el-button>
+                </div>
+              </div>
+            </div>
+            <el-upload
+              ref="attachmentUpload"
+              :auto-upload="false"
+              :show-file-list="false"
+              accept="image/*"
+              :on-change="handleAttachmentChange"
+            >
+              <el-button size="small">
+                <el-icon><Upload /></el-icon>
+                上传图片
+              </el-button>
+            </el-upload>
+          </div>
+        </el-form-item>
       </el-form>
       
       <template #footer>
@@ -141,7 +191,7 @@
 import { ref, computed, reactive } from 'vue'
 import { useAppStore } from '../stores/app'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { Search, Plus, Edit, Delete } from '@element-plus/icons-vue'
+import { Search, Plus, Edit, Delete, Upload } from '@element-plus/icons-vue'
 
 const store = useAppStore()
 
@@ -158,7 +208,8 @@ const formData = reactive({
   person_id: '',
   type: '文字',
   time: '',
-  content: ''
+  content: '',
+  attachments: []
 })
 
 // 筛选后的聊天记录列表
@@ -192,6 +243,27 @@ const formatDateTime = (dateTime) => {
   return date.toLocaleString('zh-CN')
 }
 
+// 附件处理
+const handleAttachmentChange = (file) => {
+  if (file.raw) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const attachment = {
+        name: file.name,
+        url: e.target.result,
+        type: file.raw.type.startsWith('image/') ? 'image' : 'file',
+        size: file.size
+      }
+      formData.attachments.push(attachment)
+    }
+    reader.readAsDataURL(file.raw)
+  }
+}
+
+const removeAttachment = (index) => {
+  formData.attachments.splice(index, 1)
+}
+
 // 获取聊天类型颜色
 const getChatTypeColor = (type) => {
   const colorMap = {
@@ -208,6 +280,7 @@ const resetForm = () => {
   formData.type = '文字'
   formData.time = ''
   formData.content = ''
+  formData.attachments = []
   editingChat.value = null
 }
 
@@ -218,6 +291,7 @@ const editChat = (chat) => {
   formData.type = chat.type
   formData.time = chat.time
   formData.content = chat.content
+  formData.attachments = chat.attachments ? [...chat.attachments] : []
   showAddDialog.value = true
 }
 
@@ -237,7 +311,8 @@ const saveChat = () => {
     person_id: formData.person_id,
     type: formData.type,
     time: formData.time || new Date().toISOString(),
-    content: formData.content.trim()
+    content: formData.content.trim(),
+    attachments: formData.attachments
   }
   
   if (editingChat.value) {
@@ -250,6 +325,11 @@ const saveChat = () => {
   
   showAddDialog.value = false
   resetForm()
+}
+
+// 图片预览
+const previewImage = (url) => {
+  window.open(url, '_blank')
 }
 
 // 删除聊天记录
@@ -338,6 +418,57 @@ const deleteChat = async (chat) => {
   white-space: pre-wrap;
 }
 
+.attachment-upload {
+  margin-top: 8px;
+}
+
+.attachment-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.attachment-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  background: #f5f7fa;
+}
+
+.attachment-thumbnail {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.attachment-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.chat-attachments {
+  margin-top: 12px;
+}
+
+.chat-attachments .attachment-preview {
+  display: flex;
+  gap: 8px;
+}
+
+.chat-attachments .attachment-thumbnail {
+  width: 80px;
+  height: 80px;
+}
+
 @media (max-width: 768px) {
   .chat-header {
     flex-direction: column;
@@ -352,6 +483,10 @@ const deleteChat = async (chat) => {
   .chat-content {
     padding-left: 0;
     margin-top: 8px;
+  }
+  
+  .attachment-upload {
+    width: 100%;
   }
 }
 </style>

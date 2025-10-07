@@ -25,10 +25,10 @@ export const useAppStore = defineStore('app', () => {
     return newPerson
   }
 
-  const updatePerson = (id, updates) => {
-    const index = people.value.findIndex(p => p.id === id)
+  const updatePerson = (personData) => {
+    const index = people.value.findIndex(p => p.id === personData.id)
     if (index !== -1) {
-      people.value[index] = { ...people.value[index], ...updates }
+      people.value[index] = { ...people.value[index], ...personData }
       saveToLocalStorage()
     }
   }
@@ -58,10 +58,10 @@ export const useAppStore = defineStore('app', () => {
     return newEvent
   }
 
-  const updateEvent = (id, updates) => {
-    const index = events.value.findIndex(e => e.id === id)
+  const updateEvent = (eventData) => {
+    const index = events.value.findIndex(e => e.id === eventData.id)
     if (index !== -1) {
-      events.value[index] = { ...events.value[index], ...updates }
+      events.value[index] = { ...events.value[index], ...eventData }
       saveToLocalStorage()
     }
   }
@@ -84,10 +84,10 @@ export const useAppStore = defineStore('app', () => {
     return newChat
   }
 
-  const updateChat = (id, updates) => {
-    const index = chats.value.findIndex(c => c.id === id)
+  const updateChat = (chatData) => {
+    const index = chats.value.findIndex(c => c.id === chatData.id)
     if (index !== -1) {
-      chats.value[index] = { ...chats.value[index], ...updates }
+      chats.value[index] = { ...chats.value[index], ...chatData }
       saveToLocalStorage()
     }
   }

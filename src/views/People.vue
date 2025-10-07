@@ -109,6 +109,7 @@
       :title="editingPerson ? '编辑人物' : '添加人物'"
       width="90%"
       style="max-width: 500px;"
+      @close="handleDialogClose"
     >
       <el-form :model="formData" label-width="80px">
         <el-form-item label="姓名" required>
@@ -118,7 +119,42 @@
           <el-input v-model="formData.nickname" placeholder="请输入昵称" />
         </el-form-item>
         <el-form-item label="头像">
-          <el-input v-model="formData.avatar" placeholder="请输入头像链接" />
+          <div class="avatar-upload">
+            <div class="avatar-preview">
+              <img
+                v-if="formData.avatar"
+                :src="formData.avatar"
+                class="avatar-img"
+                style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover;"
+              />
+              <div
+                v-else
+                class="avatar avatar-placeholder"
+                style="width: 60px; height: 60px; font-size: 24px;"
+              >
+                {{ formData.nickname ? formData.nickname.charAt(0) : (formData.name ? formData.name.charAt(0) : '?') }}
+              </div>
+            </div>
+            <div class="avatar-input">
+              <el-input 
+                v-model="formData.avatar" 
+                placeholder="请输入头像链接"
+                style="margin-bottom: 8px;"
+              />
+              <el-upload
+                ref="avatarUpload"
+                :auto-upload="false"
+                :show-file-list="false"
+                accept="image/*"
+                :on-change="handleAvatarChange"
+              >
+                <el-button size="small" type="primary">
+                  <el-icon><Upload /></el-icon>
+                  上传头像
+                </el-button>
+              </el-upload>
+            </div>
+          </div>
         </el-form-item>
         <el-form-item label="简介">
           <el-input
@@ -166,7 +202,7 @@
 import { ref, computed, reactive } from 'vue'
 import { useAppStore } from '../stores/app'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { Search, Plus, Edit, Delete, Phone, ChatDotRound } from '@element-plus/icons-vue'
+import { Search, Plus, Edit, Delete, Phone, ChatDotRound, Upload } from '@element-plus/icons-vue'
 
 const store = useAppStore()
 
@@ -212,6 +248,17 @@ const filteredPeople = computed(() => {
   
   return result
 })
+
+// 头像上传处理
+const handleAvatarChange = (file) => {
+  if (file.raw) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      formData.avatar = e.target.result
+    }
+    reader.readAsDataURL(file.raw)
+  }
+}
 
 // 重置表单
 const resetForm = () => {
@@ -346,6 +393,20 @@ const handleDialogClose = () => {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
 }
 
+.avatar-upload {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.avatar-preview {
+  flex-shrink: 0;
+}
+
+.avatar-input {
+  flex: 1;
+}
+
 .person-info {
   flex: 1;
   min-width: 0;
@@ -373,6 +434,7 @@ const handleDialogClose = () => {
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
+  line-clamp: 2;
 }
 
 .person-tags {
@@ -417,6 +479,11 @@ const handleDialogClose = () => {
     position: static;
     justify-content: center;
     margin-top: 10px;
+  }
+  
+  .avatar-upload {
+    flex-direction: column;
+    align-items: center;
   }
 }
 </style>

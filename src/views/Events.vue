@@ -101,6 +101,21 @@
               {{ tag }}
             </el-tag>
           </div>
+          
+          <div v-if="event.attachments && event.attachments.length" class="event-attachments">
+            <div 
+              v-for="(attachment, index) in event.attachments" 
+              :key="index"
+              class="attachment-preview"
+            >
+              <img 
+                v-if="attachment.type === 'image'"
+                :src="attachment.url" 
+                class="attachment-thumbnail"
+                @click="previewImage(attachment.url)"
+              />
+            </div>
+          </div>
         </div>
       </el-card>
     </div>
@@ -147,6 +162,41 @@
             placeholder="请输入事件描述"
           />
         </el-form-item>
+        <el-form-item label="附件">
+          <div class="attachment-upload">
+            <div v-if="formData.attachments && formData.attachments.length" class="attachment-preview">
+              <div 
+                v-for="(attachment, index) in formData.attachments" 
+                :key="index"
+                class="attachment-item"
+              >
+                <img 
+                  v-if="attachment.type === 'image'"
+                  :src="attachment.url" 
+                  class="attachment-thumbnail"
+                />
+                <div class="attachment-info">
+                  <span>{{ attachment.name }}</span>
+                  <el-button type="text" size="small" @click="removeAttachment(index)">
+                    <el-icon><Delete /></el-icon>
+                  </el-button>
+                </div>
+              </div>
+            </div>
+            <el-upload
+              ref="attachmentUpload"
+              :auto-upload="false"
+              :show-file-list="false"
+              accept="image/*"
+              :on-change="handleAttachmentChange"
+            >
+              <el-button size="small">
+                <el-icon><Upload /></el-icon>
+                上传图片
+              </el-button>
+            </el-upload>
+          </div>
+        </el-form-item>
         <el-form-item label="标签">
           <el-select
             v-model="formData.tags"
@@ -179,7 +229,7 @@
 import { ref, computed, reactive } from 'vue'
 import { useAppStore } from '../stores/app'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { Search, Plus, Edit, Delete, Clock, Location } from '@element-plus/icons-vue'
+import { Search, Plus, Edit, Delete, Clock, Location, Upload } from '@element-plus/icons-vue'
 
 const store = useAppStore()
 
@@ -198,7 +248,8 @@ const formData = reactive({
   time: '',
   location: '',
   description: '',
-  tags: []
+  tags: [],
+  attachments: []
 })
 
 // 筛选后的事件列表
@@ -228,6 +279,27 @@ const getPersonName = (id) => {
   return person ? person.name : '未知用户'
 }
 
+// 附件处理
+const handleAttachmentChange = (file) => {
+  if (file.raw) {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const attachment = {
+        name: file.name,
+        url: e.target.result,
+        type: file.raw.type.startsWith('image/') ? 'image' : 'file',
+        size: file.size
+      }
+      formData.attachments.push(attachment)
+    }
+    reader.readAsDataURL(file.raw)
+  }
+}
+
+const removeAttachment = (index) => {
+  formData.attachments.splice(index, 1)
+}
+
 // 格式化日期时间
 const formatDateTime = (dateTime) => {
   const date = new Date(dateTime)
@@ -242,6 +314,7 @@ const resetForm = () => {
   formData.location = ''
   formData.description = ''
   formData.tags = []
+  formData.attachments = []
   editingEvent.value = null
 }
 
@@ -254,7 +327,14 @@ const editEvent = (event) => {
   formData.location = event.location || ''
   formData.description = event.description || ''
   formData.tags = event.tags ? [...event.tags] : []
+  formData.attachments = event.attachments ? [...event.attachments] : []
   showAddDialog.value = true
+}
+
+// 图片预览
+const previewImage = (url) => {
+  // 创建一个新窗口预览图片
+  window.open(url, '_blank')
 }
 
 // 保存事件
@@ -275,7 +355,8 @@ const saveEvent = () => {
     time: formData.time || new Date().toISOString(),
     location: formData.location.trim(),
     description: formData.description.trim(),
-    tags: formData.tags
+    tags: formData.tags,
+    attachments: formData.attachments
   }
   
   // 添加新标签到标签列表
@@ -399,6 +480,57 @@ const deleteEvent = async (event) => {
   gap: 8px;
 }
 
+.attachment-upload {
+  margin-top: 8px;
+}
+
+.attachment-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.attachment-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 8px;
+  border: 1px solid #dcdfe6;
+  border-radius: 4px;
+  background: #f5f7fa;
+}
+
+.attachment-thumbnail {
+  width: 60px;
+  height: 60px;
+  object-fit: cover;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.attachment-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  font-size: 12px;
+}
+
+.event-attachments {
+  margin-top: 12px;
+}
+
+.event-attachments .attachment-preview {
+  display: flex;
+  gap: 8px;
+}
+
+.event-attachments .attachment-thumbnail {
+  width: 80px;
+  height: 80px;
+}
+
 @media (max-width: 768px) {
   .event-header {
     flex-direction: column;
@@ -412,6 +544,10 @@ const deleteEvent = async (event) => {
   .event-info {
     flex-direction: column;
     gap: 8px;
+  }
+  
+  .attachment-upload {
+    width: 100%;
   }
 }
 </style>
