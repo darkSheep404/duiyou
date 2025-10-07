@@ -187,6 +187,8 @@
                   v-if="attachment.type === 'image'"
                   :src="attachment.url" 
                   class="attachment-thumbnail"
+                  @click="previewImage(attachment.url)"
+                  style="cursor: pointer;"
                 />
                 <div class="attachment-info">
                   <span>{{ attachment.name }}</span>
@@ -334,7 +336,11 @@ const editChat = (chat) => {
   formData.type = chat.type
   formData.time = chat.time
   formData.content = chat.content
-  formData.attachments = chat.attachments ? [...chat.attachments] : []
+  // 处理附件，确保有type字段
+  formData.attachments = chat.attachments ? chat.attachments.map(att => ({
+    ...att,
+    type: att.type || (att.name && att.name.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? 'image' : 'file')
+  })) : []
   showAddDialog.value = true
 }
 
@@ -351,6 +357,7 @@ const saveChat = () => {
   }
   
   const chatData = {
+    id: editingChat.value?.id, // 确保包含id
     person_ids: formData.person_ids, // 使用新的多人物数据结构
     type: formData.type,
     time: formData.time || new Date().toISOString(),
@@ -359,7 +366,7 @@ const saveChat = () => {
   }
   
   if (editingChat.value) {
-    store.updateChat(editingChat.value.id, chatData)
+    store.updateChat(chatData)
     ElMessage.success('聊天记录已更新')
   } else {
     store.addChat(chatData)

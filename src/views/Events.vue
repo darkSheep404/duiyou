@@ -229,6 +229,8 @@
                   v-if="attachment.type === 'image'"
                   :src="attachment.url" 
                   class="attachment-thumbnail"
+                  @click="previewImage(attachment.url)"
+                  style="cursor: pointer;"
                 />
                 <div class="attachment-info">
                   <span>{{ attachment.name }}</span>
@@ -395,7 +397,11 @@ const editEvent = (event) => {
   formData.location = event.location || ''
   formData.description = event.description || ''
   formData.tags = event.tags ? [...event.tags] : []
-  formData.attachments = event.attachments ? [...event.attachments] : []
+  // 处理附件，确保有type字段
+  formData.attachments = event.attachments ? event.attachments.map(att => ({
+    ...att,
+    type: att.type || (att.name && att.name.match(/\.(jpg|jpeg|png|gif|webp)$/i) ? 'image' : 'file')
+  })) : []
   showAddDialog.value = true
 }
 
@@ -418,6 +424,7 @@ const saveEvent = () => {
   }
   
   const eventData = {
+    id: editingEvent.value?.id, // 确保包含id
     title: formData.title.trim(),
     person_ids: formData.person_ids, // 使用新的多人物数据结构
     eventType: formData.eventType || '', // 事件类型
@@ -436,7 +443,7 @@ const saveEvent = () => {
   })
   
   if (editingEvent.value) {
-    store.updateEvent(editingEvent.value.id, eventData)
+    store.updateEvent(eventData)
     ElMessage.success('事件信息已更新')
   } else {
     store.addEvent(eventData)

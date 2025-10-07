@@ -300,6 +300,7 @@ const savePerson = () => {
   }
   
   const personData = {
+    id: editingPerson.value?.id, // 确保包含id
     name: formData.name.trim(),
     nickname: formData.nickname.trim(),
     avatar: formData.avatar.trim(),
@@ -319,7 +320,7 @@ const savePerson = () => {
   })
   
   if (editingPerson.value) {
-    store.updatePerson(editingPerson.value.id, personData)
+    store.updatePerson(personData)
     ElMessage.success('人物信息已更新')
   } else {
     store.addPerson(personData)
