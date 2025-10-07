@@ -1,57 +1,10 @@
 <template>
-  <div class="timeline-page">
-    <!-- 筛选栏 -->
-    <el-card class="filter-card">
-      <el-row :gutter="20">
-        <el-col :xs="24" :sm="8">
-          <el-select
-            v-model="selectedPerson"
-            placeholder="按人物筛选"
-            clearable
-            style="width: 100%"
-          >
-            <el-option
-              v-for="person in store.people"
-              :key="person.id"
-              :label="person.name"
-              :value="person.id"
-            />
-          </el-select>
-        </el-col>
-        <el-col :xs="24" :sm="8">
-          <el-select
-            v-model="selectedTag"
-            placeholder="按标签筛选"
-            clearable
-            style="width: 100%"
-          >
-            <el-option
-              v-for="tag in store.tags"
-              :key="tag"
-              :label="tag"
-              :value="tag"
-            />
-          </el-select>
-        </el-col>
-        <el-col :xs="24" :sm="8">
-          <el-select
-            v-model="selectedType"
-            placeholder="按类型筛选"
-            clearable
-            style="width: 100%"
-          >
-            <el-option label="事件" value="event" />
-            <el-option label="聊天记录" value="chat" />
-          </el-select>
-        </el-col>
-      </el-row>
-    </el-card>
-
-    <!-- 时间线 -->
+  <div class="person-timeline">
+    <!-- 时间线（不显示筛选框） -->
     <div class="timeline-container">
-      <el-timeline>
+      <el-timeline v-if="timelineItems.length > 0">
         <el-timeline-item
-          v-for="item in filteredTimeline"
+          v-for="item in timelineItems"
           :key="`${item.type}-${item.id}`"
           :timestamp="formatDateTime(item.displayTime)"
           placement="top"
@@ -73,8 +26,8 @@
               </div>
               
               <!-- 多人物显示 -->
-              <div class="item-people">
-                <div v-if="item.people && item.people.length > 0" class="people-avatars">
+              <div class="item-people" v-if="item.people && item.people.length > 1">
+                <div class="people-avatars">
                   <el-avatar
                     v-for="(person, index) in item.people.slice(0, 5)"
                     :key="person.id"
@@ -89,23 +42,8 @@
                     +{{ item.people.length - 5 }}
                   </span>
                 </div>
-                <!-- 兼容旧数据单人物显示 -->
-                <div v-else-if="item.person" class="single-person">
-                  <el-avatar
-                    v-if="item.person.avatar"
-                    :src="item.person.avatar"
-                    :size="24"
-                  />
-                  <div
-                    v-else
-                    class="avatar"
-                    style="width: 24px; height: 24px; font-size: 12px;"
-                  >
-                    {{ item.person.name.charAt(0) }}
-                  </div>
-                </div>
                 <span class="people-names">
-                  {{ item.people && item.people.length > 0 ? item.people.map(p => p.name).join(', ') : (item.person?.name || '未知用户') }}
+                  {{ item.people.map(p => p.name).join(', ') }}
                 </span>
               </div>
               
@@ -157,8 +95,8 @@
               </div>
               
               <!-- 多人物显示 -->
-              <div class="item-people">
-                <div v-if="item.people && item.people.length > 0" class="people-avatars">
+              <div class="item-people" v-if="item.people && item.people.length > 1">
+                <div class="people-avatars">
                   <el-avatar
                     v-for="(person, index) in item.people.slice(0, 5)"
                     :key="person.id"
@@ -173,23 +111,8 @@
                     +{{ item.people.length - 5 }}
                   </span>
                 </div>
-                <!-- 兼容旧数据单人物显示 -->
-                <div v-else-if="item.person" class="single-person">
-                  <el-avatar
-                    v-if="item.person.avatar"
-                    :src="item.person.avatar"
-                    :size="24"
-                  />
-                  <div
-                    v-else
-                    class="avatar"
-                    style="width: 24px; height: 24px; font-size: 12px;"
-                  >
-                    {{ item.person.name.charAt(0) }}
-                  </div>
-                </div>
                 <span class="people-names">
-                  {{ item.people && item.people.length > 0 ? item.people.map(p => p.name).join(', ') : (item.person?.name || '未知用户') }}
+                  {{ item.people.map(p => p.name).join(', ') }}
                 </span>
               </div>
               
@@ -214,66 +137,30 @@
       </el-timeline>
       
       <!-- 空状态 -->
-      <div v-if="filteredTimeline.length === 0" class="empty-state">
-        <el-empty description="暂无时间线数据" />
+      <div v-else class="empty-state">
+        <el-empty description="该人物暂无相关记录" />
       </div>
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { computed } from 'vue'
 import { useAppStore } from '../stores/app'
 import { Calendar, ChatDotRound, Location } from '@element-plus/icons-vue'
 
+const props = defineProps({
+  personId: {
+    type: String,
+    required: true
+  }
+})
+
 const store = useAppStore()
 
-// 筛选条件
-const selectedPerson = ref('')
-const selectedTag = ref('')
-const selectedType = ref('')
-
-// 筛选后的时间线数据
-const filteredTimeline = computed(() => {
-  let result = store.timelineItems
-  
-  // 按人物筛选
-  if (selectedPerson.value) {
-    result = result.filter(item => {
-      // 支持多人物筛选
-      if (item.person_ids && item.person_ids.includes(selectedPerson.value)) {
-        return true
-      }
-      // 兼容旧数据
-      return item.person_id === selectedPerson.value
-    })
-  }
-  
-  // 按标签筛选
-  if (selectedTag.value) {
-    result = result.filter(item => {
-      // 检查项目本身的标签
-      if (item.tags && item.tags.includes(selectedTag.value)) {
-        return true
-      }
-      // 检查关联人物的标签
-      if (item.people && item.people.some(p => p.tags && p.tags.includes(selectedTag.value))) {
-        return true
-      }
-      // 兼容旧数据
-      if (item.person && item.person.tags && item.person.tags.includes(selectedTag.value)) {
-        return true
-      }
-      return false
-    })
-  }
-  
-  // 按类型筛选
-  if (selectedType.value) {
-    result = result.filter(item => item.type === selectedType.value)
-  }
-  
-  return result
+// 获取该人物的时间线数据
+const timelineItems = computed(() => {
+  return store.getTimelineByPerson(props.personId)
 })
 
 // 图片预览
@@ -320,12 +207,8 @@ const getChatTypeColor = (type) => {
 </script>
 
 <style scoped>
-.timeline-page {
+.person-timeline {
   width: 100%;
-}
-
-.filter-card {
-  margin-bottom: 20px;
 }
 
 .timeline-container {
@@ -394,11 +277,6 @@ const getChatTypeColor = (type) => {
   border-radius: 10px;
 }
 
-.single-person {
-  display: flex;
-  align-items: center;
-}
-
 .people-names {
   color: #606266;
   font-weight: 500;
@@ -456,16 +334,6 @@ const getChatTypeColor = (type) => {
   border-radius: 8px;
 }
 
-.avatar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 50%;
-  font-weight: bold;
-}
-
 .empty-state {
   text-align: center;
   padding: 40px 20px;
@@ -490,25 +358,5 @@ const getChatTypeColor = (type) => {
     height: 20px;
     font-size: 10px;
   }
-}
-
-/* Element Plus Timeline 自定义样式 */
-:deep(.el-timeline-item__timestamp) {
-  color: #909399;
-  font-size: 12px;
-  font-weight: 500;
-}
-
-:deep(.el-timeline-item__node) {
-  background-color: #409eff;
-}
-
-:deep(.el-timeline-item__node--large) {
-  width: 16px;
-  height: 16px;
-}
-
-:deep(.el-timeline-item__node--success) {
-  background-color: #67c23a;
 }
 </style>

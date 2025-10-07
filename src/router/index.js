@@ -5,6 +5,7 @@ import Events from '../views/Events.vue'
 import Chats from '../views/Chats.vue'
 import Timeline from '../views/Timeline.vue'
 import Settings from '../views/Settings.vue'
+import PersonDetail from '../views/PersonDetail.vue'
 
 const routes = [
   {
@@ -17,6 +18,12 @@ const routes = [
         name: 'People',
         component: People,
         meta: { title: '人物管理' }
+      },
+      {
+        path: '/person/:id',
+        name: 'PersonDetail',
+        component: PersonDetail,
+        meta: { title: '人物详情' }
       },
       {
         path: '/events',

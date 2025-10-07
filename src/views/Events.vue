@@ -48,21 +48,55 @@
       >
         <div class="event-header">
           <div class="event-title">
-            <h3>{{ event.title }}</h3>
-            <div class="event-person">
-              <el-avatar
-                v-if="getPersonById(event.person_id)?.avatar"
-                :src="getPersonById(event.person_id).avatar"
-                :size="24"
-              />
-              <div
-                v-else-if="getPersonById(event.person_id)"
-                class="avatar"
-                style="width: 24px; height: 24px; font-size: 12px;"
-              >
-                {{ getPersonName(event.person_id).charAt(0) }}
+            <div class="title-row">
+              <h3>{{ event.title }}</h3>
+              <el-tag v-if="event.eventType" type="info" size="small" style="margin-left: 8px;">
+                {{ event.eventType }}
+              </el-tag>
+            </div>
+            <div class="event-people">
+              <!-- 支持多人物显示，最多显示5个头像 -->
+              <div v-if="getEventPeople(event).length > 0" class="people-avatars">
+                <el-avatar
+                  v-for="(person, index) in getEventPeople(event).slice(0, 5)"
+                  :key="person.id"
+                  :src="person.avatar"
+                  :size="24"
+                  :style="{ marginLeft: index > 0 ? '-8px' : '0', zIndex: 5 - index }"
+                  class="person-avatar"
+                >
+                  {{ person.nickname ? person.nickname.charAt(0) : person.name.charAt(0) }}
+                </el-avatar>
+                <span v-if="getEventPeople(event).length > 5" class="more-people">
+                  +{{ getEventPeople(event).length - 5 }}
+                </span>
+                <div class="people-names">
+                  <el-tag
+                    v-for="person in getEventPeople(event)"
+                    :key="person.id"
+                    size="small"
+                    style="margin-right: 4px; margin-top: 4px;"
+                  >
+                    {{ person.name }}
+                  </el-tag>
+                </div>
               </div>
-              <span>{{ getPersonName(event.person_id) }}</span>
+              <!-- 兼容旧数据单人物显示 -->
+              <div v-else-if="event.person_id" class="single-person">
+                <el-avatar
+                  v-if="getPersonById(event.person_id)?.avatar"
+                  :src="getPersonById(event.person_id).avatar"
+                  :size="24"
+                />
+                <div
+                  v-else
+                  class="avatar"
+                  style="width: 24px; height: 24px; font-size: 12px;"
+                >
+                  {{ getPersonName(event.person_id).charAt(0) }}
+                </div>
+                <span>{{ getPersonName(event.person_id) }}</span>
+              </div>
             </div>
           </div>
           <div class="event-actions">
@@ -132,13 +166,34 @@
           <el-input v-model="formData.title" placeholder="请输入事件标题" />
         </el-form-item>
         <el-form-item label="关联人物" required>
-          <el-select v-model="formData.person_id" placeholder="选择人物" style="width: 100%">
+          <el-select 
+            v-model="formData.person_ids" 
+            multiple
+            placeholder="选择人物" 
+            style="width: 100%"
+          >
             <el-option
               v-for="person in store.people"
               :key="person.id"
               :label="person.name"
               :value="person.id"
             />
+          </el-select>
+        </el-form-item>
+        <el-form-item label="事件类型">
+          <el-select 
+            v-model="formData.eventType" 
+            placeholder="选择事件类型" 
+            style="width: 100%"
+            filterable
+            allow-create
+            default-first-option
+          >
+            <el-option label="聚餐" value="聚餐" />
+            <el-option label="旅游" value="旅游" />
+            <el-option label="会议" value="会议" />
+            <el-option label="生日" value="生日" />
+            <el-option label="聚会" value="聚会" />
           </el-select>
         </el-form-item>
         <el-form-item label="时间">
@@ -244,7 +299,8 @@ const editingEvent = ref(null)
 // 表单数据
 const formData = reactive({
   title: '',
-  person_id: '',
+  person_ids: [], // 改为数组支持多人物
+  eventType: '', // 新增事件类型
   time: '',
   location: '',
   description: '',
@@ -266,7 +322,10 @@ const filteredEvents = computed(() => {
   }
   
   if (selectedPerson.value) {
-    result = result.filter(event => event.person_id === selectedPerson.value)
+    result = result.filter(event => {
+      const personIds = event.person_ids || [event.person_id].filter(Boolean) // 兼容旧数据
+      return personIds.includes(selectedPerson.value)
+    })
   }
   
   return result
@@ -277,6 +336,12 @@ const getPersonById = (id) => store.getPersonById(id)
 const getPersonName = (id) => {
   const person = store.getPersonById(id)
   return person ? person.name : '未知用户'
+}
+
+// 获取事件相关的人物
+const getEventPeople = (event) => {
+  const personIds = event.person_ids || []
+  return personIds.map(id => store.getPersonById(id)).filter(Boolean)
 }
 
 // 附件处理
@@ -309,7 +374,8 @@ const formatDateTime = (dateTime) => {
 // 重置表单
 const resetForm = () => {
   formData.title = ''
-  formData.person_id = ''
+  formData.person_ids = []
+  formData.eventType = ''
   formData.time = ''
   formData.location = ''
   formData.description = ''
@@ -322,7 +388,9 @@ const resetForm = () => {
 const editEvent = (event) => {
   editingEvent.value = event
   formData.title = event.title
-  formData.person_id = event.person_id
+  // 支持新的多人物格式和兼容旧单人物格式
+  formData.person_ids = event.person_ids || (event.person_id ? [event.person_id] : [])
+  formData.eventType = event.eventType || ''
   formData.time = event.time
   formData.location = event.location || ''
   formData.description = event.description || ''
@@ -344,14 +412,15 @@ const saveEvent = () => {
     return
   }
   
-  if (!formData.person_id) {
+  if (!formData.person_ids || formData.person_ids.length === 0) {
     ElMessage.error('请选择关联人物')
     return
   }
   
   const eventData = {
     title: formData.title.trim(),
-    person_id: formData.person_id,
+    person_ids: formData.person_ids, // 使用新的多人物数据结构
+    eventType: formData.eventType || '', // 事件类型
     time: formData.time || new Date().toISOString(),
     location: formData.location.trim(),
     description: formData.description.trim(),
@@ -429,13 +498,53 @@ const deleteEvent = async (event) => {
   margin-bottom: 12px;
 }
 
+.title-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
 .event-title h3 {
   margin: 0 0 8px 0;
   color: #303133;
   font-size: 16px;
 }
 
-.event-person {
+.event-people {
+  margin-top: 8px;
+}
+
+.people-avatars {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.person-avatar {
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.more-people {
+  background: #f5f7fa;
+  color: #606266;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  margin-left: -8px;
+}
+
+.people-names {
+  margin-top: 4px;
+  width: 100%;
+}
+
+.single-person {
   display: flex;
   align-items: center;
   gap: 8px;

@@ -150,22 +150,32 @@ export const useAppStore = defineStore('app', () => {
     
     // 添加事件到时间线
     events.value.forEach(event => {
-      const person = getPersonById(event.person_id)
+      // 支持多人物事件 - person_ids 是数组，person_id 是兼容旧数据
+      const personIds = event.person_ids || (event.person_id ? [event.person_id] : [])
+      const people = personIds.map(id => getPersonById(id)).filter(Boolean)
+      
       items.push({
         ...event,
         type: 'event',
-        person: person,
+        people: people, // 多个人物
+        person: people[0], // 兼容旧代码
+        person_ids: personIds,
         displayTime: new Date(event.time)
       })
     })
     
     // 添加聊天记录到时间线
     chats.value.forEach(chat => {
-      const person = getPersonById(chat.person_id)
+      // 支持多人物聊天 - person_ids 是数组，person_id 是兼容旧数据
+      const personIds = chat.person_ids || (chat.person_id ? [chat.person_id] : [])
+      const people = personIds.map(id => getPersonById(id)).filter(Boolean)
+      
       items.push({
         ...chat,
         type: 'chat',
-        person: person,
+        people: people, // 多个人物
+        person: people[0], // 兼容旧代码
+        person_ids: personIds,
         displayTime: new Date(chat.time)
       })
     })
@@ -176,7 +186,14 @@ export const useAppStore = defineStore('app', () => {
 
   // 根据人物筛选时间线
   const getTimelineByPerson = (personId) => {
-    return timelineItems.value.filter(item => item.person_id === personId)
+    return timelineItems.value.filter(item => {
+      // 支持多人物事件和聊天
+      if (item.person_ids && item.person_ids.includes(personId)) {
+        return true
+      }
+      // 兼容旧数据
+      return item.person_id === personId
+    })
   }
 
   // 根据标签筛选时间线

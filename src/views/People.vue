@@ -46,7 +46,7 @@
         class="person-card"
         shadow="hover"
       >
-        <div class="person-content">
+        <div class="person-content" @click="goToPersonDetail(person)">
           <div class="person-avatar">
             <img
               v-if="person.avatar"
@@ -91,7 +91,7 @@
             </div>
           </div>
           
-          <div class="person-actions">
+          <div class="person-actions" @click.stop>
             <el-button type="text" @click="editPerson(person)">
               <el-icon><Edit /></el-icon>
             </el-button>
@@ -200,10 +200,12 @@
 
 <script setup>
 import { ref, computed, reactive } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAppStore } from '../stores/app'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { Search, Plus, Edit, Delete, Phone, ChatDotRound, Upload } from '@element-plus/icons-vue'
 
+const router = useRouter()
 const store = useAppStore()
 
 // 搜索和筛选
@@ -270,6 +272,11 @@ const resetForm = () => {
   formData.contact.phone = ''
   formData.contact.wechat = ''
   editingPerson.value = null
+}
+
+// 跳转到人物详情页
+const goToPersonDetail = (person) => {
+  router.push(`/person/${person.id}`)
 }
 
 // 编辑人物
@@ -376,6 +383,12 @@ const handleDialogClose = () => {
   display: flex;
   gap: 15px;
   position: relative;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.person-content:hover {
+  transform: translateY(-2px);
 }
 
 .person-avatar {

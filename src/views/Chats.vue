@@ -48,20 +48,48 @@
       >
         <div class="chat-header">
           <div class="chat-person">
-            <el-avatar
-              v-if="getPersonById(chat.person_id)?.avatar"
-              :src="getPersonById(chat.person_id).avatar"
-              :size="32"
-            />
-            <div
-              v-else-if="getPersonById(chat.person_id)"
-              class="avatar"
-              style="width: 32px; height: 32px; font-size: 14px;"
-            >
-              {{ getPersonName(chat.person_id).charAt(0) }}
+            <!-- 支持多人物聊天显示 -->
+            <div v-if="getChatPeople(chat).length > 0" class="people-avatars">
+              <el-avatar
+                v-for="(person, index) in getChatPeople(chat).slice(0, 5)"
+                :key="person.id"
+                :src="person.avatar"
+                :size="32"
+                :style="{ marginLeft: index > 0 ? '-8px' : '0', zIndex: 5 - index }"
+                class="person-avatar"
+              >
+                {{ person.nickname ? person.nickname.charAt(0) : person.name.charAt(0) }}
+              </el-avatar>
+              <span v-if="getChatPeople(chat).length > 5" class="more-people">
+                +{{ getChatPeople(chat).length - 5 }}
+              </span>
+            </div>
+            <!-- 兼容旧数据单人物显示 -->
+            <div v-else-if="chat.person_id" class="single-person-avatar">
+              <el-avatar
+                v-if="getPersonById(chat.person_id)?.avatar"
+                :src="getPersonById(chat.person_id).avatar"
+                :size="32"
+              />
+              <div
+                v-else
+                class="avatar"
+                style="width: 32px; height: 32px; font-size: 14px;"
+              >
+                {{ getPersonName(chat.person_id).charAt(0) }}
+              </div>
             </div>
             <div class="person-info">
-              <div class="person-name">{{ getPersonName(chat.person_id) }}</div>
+              <div class="person-name">
+                <!-- 显示多人物名称 -->
+                <span v-if="getChatPeople(chat).length > 0">
+                  {{ getChatPeople(chat).map(p => p.name).join(', ') }}
+                </span>
+                <!-- 兼容旧数据 -->
+                <span v-else-if="chat.person_id">
+                  {{ getPersonName(chat.person_id) }}
+                </span>
+              </div>
               <div class="chat-time">{{ formatDateTime(chat.time) }}</div>
             </div>
           </div>
@@ -108,7 +136,12 @@
     >
       <el-form :model="formData" label-width="80px">
         <el-form-item label="关联人物" required>
-          <el-select v-model="formData.person_id" placeholder="选择人物" style="width: 100%">
+          <el-select 
+            v-model="formData.person_ids" 
+            multiple
+            placeholder="选择人物" 
+            style="width: 100%"
+          >
             <el-option
               v-for="person in store.people"
               :key="person.id"
@@ -205,7 +238,7 @@ const editingChat = ref(null)
 
 // 表单数据
 const formData = reactive({
-  person_id: '',
+  person_ids: [], // 改为数组支持多人物
   type: '文字',
   time: '',
   content: '',
@@ -224,7 +257,10 @@ const filteredChats = computed(() => {
   }
   
   if (selectedPerson.value) {
-    result = result.filter(chat => chat.person_id === selectedPerson.value)
+    result = result.filter(chat => {
+      const personIds = chat.person_ids || [chat.person_id].filter(Boolean) // 兼容旧数据
+      return personIds.includes(selectedPerson.value)
+    })
   }
   
   return result
@@ -235,6 +271,12 @@ const getPersonById = (id) => store.getPersonById(id)
 const getPersonName = (id) => {
   const person = store.getPersonById(id)
   return person ? person.name : '未知用户'
+}
+
+// 获取聊天相关的人物
+const getChatPeople = (chat) => {
+  const personIds = chat.person_ids || []
+  return personIds.map(id => store.getPersonById(id)).filter(Boolean)
 }
 
 // 格式化日期时间
@@ -276,7 +318,7 @@ const getChatTypeColor = (type) => {
 
 // 重置表单
 const resetForm = () => {
-  formData.person_id = ''
+  formData.person_ids = []
   formData.type = '文字'
   formData.time = ''
   formData.content = ''
@@ -287,7 +329,8 @@ const resetForm = () => {
 // 编辑聊天记录
 const editChat = (chat) => {
   editingChat.value = chat
-  formData.person_id = chat.person_id
+  // 支持新的多人物格式和兼容旧单人物格式
+  formData.person_ids = chat.person_ids || (chat.person_id ? [chat.person_id] : [])
   formData.type = chat.type
   formData.time = chat.time
   formData.content = chat.content
@@ -297,7 +340,7 @@ const editChat = (chat) => {
 
 // 保存聊天记录
 const saveChat = () => {
-  if (!formData.person_id) {
+  if (!formData.person_ids || formData.person_ids.length === 0) {
     ElMessage.error('请选择关联人物')
     return
   }
@@ -308,7 +351,7 @@ const saveChat = () => {
   }
   
   const chatData = {
-    person_id: formData.person_id,
+    person_ids: formData.person_ids, // 使用新的多人物数据结构
     type: formData.type,
     time: formData.time || new Date().toISOString(),
     content: formData.content.trim(),
@@ -387,6 +430,34 @@ const deleteChat = async (chat) => {
   display: flex;
   align-items: center;
   gap: 12px;
+}
+
+.people-avatars {
+  display: flex;
+  align-items: center;
+}
+
+.person-avatar {
+  border: 2px solid white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.more-people {
+  background: #f5f7fa;
+  color: #606266;
+  border-radius: 50%;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  margin-left: -8px;
+}
+
+.single-person-avatar {
+  display: flex;
+  align-items: center;
 }
 
 .person-info {
