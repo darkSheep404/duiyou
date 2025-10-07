@@ -10,7 +10,7 @@ const routes = [
   {
     path: '/',
     component: Layout,
-    redirect: '/people',
+    redirect: '/timeline',
     children: [
       {
         path: '/people',

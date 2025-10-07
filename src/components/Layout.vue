@@ -3,7 +3,7 @@
     <!-- 桌面端侧边栏 -->
     <el-aside width="200px" class="desktop-view sidebar">
       <div class="logo">
-        <h2>对友</h2>
+        <h2>鼠鼠友人帐</h2>
         <p>人际关系管理</p>
       </div>
       <el-menu
@@ -40,13 +40,11 @@
       <!-- 顶部导航栏 -->
       <el-header class="header">
         <div class="header-content">
-          <h3 class="page-title">{{ $route.meta.title || '对友' }}</h3>
+          <h3 class="page-title">{{ $route.meta.title || '鼠鼠友人帐' }}</h3>
           <div class="header-actions">
-            <el-badge :value="people.length" class="item">
-              <el-button type="text">
+              <el-button type="text" @click="$router.push('/settings')">
                 <el-icon><User /></el-icon>
               </el-button>
-            </el-badge>
           </div>
         </div>
       </el-header>
@@ -62,8 +60,8 @@
       <el-row>
         <el-col :span="24">
           <div class="nav-buttons">
-            <div 
-              v-for="item in navItems" 
+            <div
+              v-for="item in navItems"
               :key="item.path"
               class="nav-item"
               :class="{ active: $route.path === item.path }"

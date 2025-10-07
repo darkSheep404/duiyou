@@ -97,7 +97,7 @@
         </div>
       </template>
       <div class="app-info">
-        <p><strong>应用名称：</strong>对友 - 人际关系管理</p>
+        <p><strong>应用名称：</strong>鼠鼠友人帐 - 人际关系管理</p>
         <p><strong>版本：</strong>1.0.0</p>
         <p><strong>技术栈：</strong>Vue 3 + Element Plus + Pinia</p>
         <p><strong>数据存储：</strong>本地存储（LocalStorage）</p>
@@ -147,7 +147,7 @@ const saveTag = () => {
     ElMessage.error('请输入标签名称')
     return
   }
-  
+
   if (editingTag.value) {
     // 编辑标签
     if (tag !== editingTag.value) {
@@ -163,7 +163,7 @@ const saveTag = () => {
     store.addTag(tag)
     ElMessage.success('标签添加成功')
   }
-  
+
   showTagDialog.value = false
   tagInput.value = ''
   editingTag.value = ''
@@ -188,7 +188,7 @@ const deleteTag = async (tag) => {
         type: 'warning',
       }
     )
-    
+
     store.deleteTag(tag)
     ElMessage.success('标签删除成功')
   } catch {
@@ -245,14 +245,14 @@ const clearAllData = async () => {
         type: 'warning',
       }
     )
-    
+
     // 清空数据
     store.people.length = 0
     store.events.length = 0
     store.chats.length = 0
     store.tags.splice(0, store.tags.length, '朋友', '家人', '同事')
     store.saveToLocalStorage()
-    
+
     ElMessage.success('数据已清空')
   } catch {
     // 用户取消操作
@@ -328,15 +328,15 @@ const clearAllData = async () => {
   .data-actions {
     flex-direction: column;
   }
-  
+
   .data-actions .el-button {
     width: 100%;
   }
-  
+
   .stat-number {
     font-size: 24px;
   }
-  
+
   .tags-list {
     gap: 8px;
   }
