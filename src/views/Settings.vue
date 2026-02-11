@@ -66,11 +66,13 @@
         </div>
       </template>
       <div class="data-actions">
-        <el-button type="success" @click="exportData">
+        <el-button type="success" @click="exportData" :loading="exporting">
           <el-icon><Download /></el-icon>
           导出数据
         </el-button>
+        <!-- Web 端：文件上传控件 -->
         <el-upload
+          v-if="!isNative"
           ref="uploadRef"
           :auto-upload="false"
           :show-file-list="false"
@@ -82,10 +84,20 @@
             导入数据
           </el-button>
         </el-upload>
+        <!-- Android 端：从备份目录导入 -->
+        <el-button v-if="isNative" type="warning" @click="importFromDevice" :loading="importing">
+          <el-icon><Upload /></el-icon>
+          导入数据
+        </el-button>
         <el-button type="danger" @click="clearAllData">
           <el-icon><Delete /></el-icon>
           清空所有数据
         </el-button>
+      </div>
+      <div v-if="isNative" class="data-hint">
+        <el-text type="info" size="small">
+          导出路径：Documents/duiyou/ · 导入时从该目录读取 .json 文件
+        </el-text>
       </div>
     </el-card>
 
@@ -99,7 +111,8 @@
       <div class="app-info">
         <p><strong>应用名称：</strong>鼠鼠友人帐 - 人际关系管理</p>
         <p><strong>版本：</strong>1.0.0</p>
-        <p><strong>技术栈：</strong>Vue 3 + Element Plus + Pinia</p>
+        <p><strong>平台：</strong>{{ platformName }}</p>
+        <p><strong>技术栈：</strong>Vue 3 + Element Plus + Pinia + Capacitor</p>
         <p><strong>数据存储：</strong>本地存储（LocalStorage）</p>
         <p><strong>功能：</strong>人物管理、事件记录、聊天记录、时间线展示</p>
       </div>
@@ -121,16 +134,48 @@
         <el-button type="primary" @click="saveTag">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- Android 端文件选择对话框 -->
+    <el-dialog
+      v-model="showFilePickerDialog"
+      title="选择备份文件"
+      width="90%"
+    >
+      <el-table :data="backupFiles" style="width: 100%" @row-click="selectBackupFile">
+        <el-table-column prop="name" label="文件名" />
+        <el-table-column prop="location" label="位置" width="140" />
+      </el-table>
+      <template #footer>
+        <el-button @click="showFilePickerDialog = false">取消</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useAppStore } from '../stores/app'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { Plus, Edit, Delete, Download, Upload } from '@element-plus/icons-vue'
+import { isNativePlatform, getPlatform } from '../utils/platform'
+import { exportToFile, importFromFile, listExportedFiles, readNativeFile } from '../utils/fileHelper'
 
 const store = useAppStore()
+
+// 平台检测
+const isNative = isNativePlatform()
+const platformName = computed(() => {
+  const p = getPlatform()
+  return p === 'android' ? 'Android' : p === 'ios' ? 'iOS' : 'Web'
+})
+
+// 加载状态
+const exporting = ref(false)
+const importing = ref(false)
+
+// Android 文件选择
+const showFilePickerDialog = ref(false)
+const backupFiles = ref([])
 
 // 标签管理
 const showTagDialog = ref(false)
@@ -197,40 +242,83 @@ const deleteTag = async (tag) => {
 }
 
 // 导出数据
-const exportData = () => {
+const exportData = async () => {
+  exporting.value = true
   try {
     const data = store.exportData()
-    const blob = new Blob([data], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `duiyou-data-${new Date().toISOString().split('T')[0]}.json`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    ElMessage.success('数据导出成功')
+    const filename = `duiyou-data-${new Date().toISOString().split('T')[0]}.json`
+    const result = await exportToFile(data, filename)
+    if (result.success) {
+      ElMessage.success(result.message)
+    } else {
+      ElMessage.error(result.message)
+    }
   } catch (error) {
     ElMessage.error('导出失败: ' + error.message)
+  } finally {
+    exporting.value = false
   }
 }
 
-// 处理文件选择
-const handleFileChange = (file) => {
-  const reader = new FileReader()
-  reader.onload = (e) => {
-    try {
-      const success = store.importData(e.target.result)
+// Web 端：处理文件选择
+const handleFileChange = async (file) => {
+  const result = await importFromFile(file.raw)
+  if (result.success && result.data) {
+    const success = store.importData(result.data)
+    if (success) {
+      ElMessage.success('数据导入成功')
+    } else {
+      ElMessage.error('数据格式错误，导入失败')
+    }
+  } else {
+    ElMessage.error(result.message || '文件读取失败')
+  }
+}
+
+// Android 端：从设备导入
+const importFromDevice = async () => {
+  importing.value = true
+  try {
+    const result = await importFromFile(null)
+    if (result.success && result.data) {
+      // 单文件，直接导入
+      const success = store.importData(result.data)
       if (success) {
         ElMessage.success('数据导入成功')
       } else {
         ElMessage.error('数据格式错误，导入失败')
       }
-    } catch (error) {
-      ElMessage.error('文件读取失败: ' + error.message)
+    } else if (result.success && result.fileList) {
+      // 多文件，弹出选择对话框
+      backupFiles.value = result.fileList
+      showFilePickerDialog.value = true
+    } else {
+      ElMessage.warning(result.message)
     }
+  } catch (error) {
+    ElMessage.error('导入失败: ' + error.message)
+  } finally {
+    importing.value = false
   }
-  reader.readAsText(file.raw)
+}
+
+// 选择备份文件并导入
+const selectBackupFile = async (row) => {
+  showFilePickerDialog.value = false
+  importing.value = true
+  try {
+    const data = await readNativeFile(row.path, row.directory)
+    const success = store.importData(data)
+    if (success) {
+      ElMessage.success('数据导入成功')
+    } else {
+      ElMessage.error('数据格式错误，导入失败')
+    }
+  } catch (error) {
+    ElMessage.error('读取文件失败: ' + error.message)
+  } finally {
+    importing.value = false
+  }
 }
 
 // 清空所有数据
@@ -322,6 +410,11 @@ const clearAllData = async () => {
 
 .app-info p {
   margin: 8px 0;
+}
+
+.data-hint {
+  margin-top: 12px;
+  padding: 8px 0;
 }
 
 @media (max-width: 768px) {
