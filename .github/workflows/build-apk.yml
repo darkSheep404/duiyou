@@ -32,23 +32,15 @@ jobs:
 
       - name: Inject release signing config
         run: |
-          # 在 android { 之后插入 signingConfigs 块
-          sed -i '/^android {$/a\
-    signingConfigs {\
-        release {\
-            storeFile file("../../duiyou-release.keystore")\
-            storePassword "duiyou123"\
-            keyAlias "duiyou"\
-            keyPassword "duiyou123"\
-        }\
-    }' android/app/build.gradle
+          GRADLE="android/app/build.gradle"
+          # 在 android { 之后插入 signingConfigs 块（单行 \n 写法避免 YAML 缩进问题）
+          sed -i '/^android {$/a\    signingConfigs {\n        release {\n            storeFile file("../../duiyou-release.keystore")\n            storePassword "duiyou123"\n            keyAlias "duiyou"\n            keyPassword "duiyou123"\n        }\n    }' "$GRADLE"
           # 在 release buildType 中添加 signingConfig
-          sed -i '/minifyEnabled false/a\
-            signingConfig signingConfigs.release' android/app/build.gradle
+          sed -i '/minifyEnabled false/a\            signingConfig signingConfigs.release' "$GRADLE"
           # 用 CI 构建号作为 versionCode
-          sed -i "s/versionCode 1/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          sed -i "s/versionCode 1/versionCode ${{ github.run_number }}/" "$GRADLE"
           echo "--- Patched build.gradle ---"
-          cat android/app/build.gradle
+          cat "$GRADLE"
 
       - name: Generate Android app icons from icon.png
         run: |
