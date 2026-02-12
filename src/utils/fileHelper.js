@@ -1,10 +1,11 @@
 import { Filesystem, Directory, Encoding } from '@capacitor/filesystem'
+import { Share } from '@capacitor/share'
 import { isNativePlatform } from './platform'
 
 /**
  * 导出数据到文件
- * - Web 端：使用 Blob + download link
- * - Android 端：使用 Capacitor Filesystem 写入 Downloads 目录
+ * - Web 端：使用 Blob + download link（浏览器弹出保存对话框）
+ * - Android 端：先写入缓存，再通过系统分享/保存选择器让用户选择保存位置
  * @param {string} jsonString - 要导出的 JSON 字符串
  * @param {string} filename - 文件名
  * @returns {Promise<{success: boolean, message: string, path?: string}>}
@@ -18,21 +19,30 @@ export async function exportToFile(jsonString, filename) {
 }
 
 /**
- * 从文件导入数据
- * - Web 端：使用 FileReader 读取
- * - Android 端：使用 Capacitor Filesystem 选择文件读取
- * @param {File|null} file - Web 端的 File 对象，Android 端传 null
+ * 从文件导入数据（统一使用 FileReader 读取）
+ * Web 和 Android 都通过 <input type="file"> 选择文件，
+ * Android WebView 会自动调起系统文件选择器（SAF），支持浏览任意文件夹
+ * @param {File} file - 从 input/upload 组件获取的 File 对象
  * @returns {Promise<{success: boolean, data?: string, message?: string}>}
  */
-export async function importFromFile(file) {
-  if (isNativePlatform()) {
-    return await importNative()
-  } else {
-    return await importWeb(file)
-  }
+export function importFromFile(file) {
+  return new Promise((resolve) => {
+    if (!file) {
+      resolve({ success: false, message: '未选择文件' })
+      return
+    }
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      resolve({ success: true, data: e.target.result })
+    }
+    reader.onerror = () => {
+      resolve({ success: false, message: '文件读取失败' })
+    }
+    reader.readAsText(file)
+  })
 }
 
-// ========== Web 端实现 ==========
+// ========== Web 端导出 ==========
 
 function exportWeb(jsonString, filename) {
   try {
@@ -51,146 +61,36 @@ function exportWeb(jsonString, filename) {
   }
 }
 
-function importWeb(file) {
-  return new Promise((resolve) => {
-    if (!file) {
-      resolve({ success: false, message: '未选择文件' })
-      return
-    }
-    const reader = new FileReader()
-    reader.onload = (e) => {
-      resolve({ success: true, data: e.target.result })
-    }
-    reader.onerror = () => {
-      resolve({ success: false, message: '文件读取失败' })
-    }
-    reader.readAsText(file)
-  })
-}
-
-// ========== Android 原生端实现 ==========
+// ========== Android 原生端导出 ==========
 
 async function exportNative(jsonString, filename) {
   try {
-    // 写入到 Documents 目录（应用可直接访问，无需权限弹窗）
-    const result = await Filesystem.writeFile({
-      path: `duiyou/${filename}`,
+    // 1. 先写入缓存目录
+    const cacheResult = await Filesystem.writeFile({
+      path: filename,
       data: jsonString,
-      directory: Directory.Documents,
-      encoding: Encoding.UTF8,
-      recursive: true
+      directory: Directory.Cache,
+      encoding: Encoding.UTF8
     })
+
+    // 2. 通过系统分享选择器让用户选择保存位置/分享方式
+    await Share.share({
+      title: '鼠鼠友人帐 - 数据备份',
+      dialogTitle: '选择保存位置',
+      url: cacheResult.uri,
+      files: [cacheResult.uri]
+    })
+
     return {
       success: true,
-      message: `数据已导出到 Documents/duiyou/${filename}`,
-      path: result.uri
+      message: '数据已导出',
+      path: cacheResult.uri
     }
   } catch (error) {
-    // 回退到 ExternalStorage 尝试
-    try {
-      const result = await Filesystem.writeFile({
-        path: `Download/duiyou/${filename}`,
-        data: jsonString,
-        directory: Directory.ExternalStorage,
-        encoding: Encoding.UTF8,
-        recursive: true
-      })
-      return {
-        success: true,
-        message: `数据已导出到 Download/duiyou/${filename}`,
-        path: result.uri
-      }
-    } catch (fallbackError) {
-      return { success: false, message: '导出失败: ' + fallbackError.message }
+    // 用户取消分享时 Share 会抛异常，不算失败
+    if (error.message && error.message.includes('cancel')) {
+      return { success: true, message: '已取消导出' }
     }
+    return { success: false, message: '导出失败: ' + error.message }
   }
-}
-
-async function importNative() {
-  try {
-    // 列出 Documents/duiyou 下的文件供用户选择
-    const files = await listExportedFiles()
-    if (files.length === 0) {
-      return { success: false, message: '未找到可导入的数据文件，请将 .json 文件放入 Documents/duiyou/ 目录' }
-    }
-
-    // 如果只有一个文件，直接读取；否则返回文件列表供选择
-    if (files.length === 1) {
-      const data = await readNativeFile(files[0].path, files[0].directory)
-      return { success: true, data }
-    }
-
-    // 多个文件时返回列表
-    return {
-      success: true,
-      fileList: files,
-      message: '找到多个备份文件，请选择要导入的文件'
-    }
-  } catch (error) {
-    return { success: false, message: '导入失败: ' + error.message }
-  }
-}
-
-/**
- * 列出已导出的备份文件
- */
-export async function listExportedFiles() {
-  const files = []
-
-  // 尝试 Documents/duiyou 目录
-  try {
-    const result = await Filesystem.readdir({
-      path: 'duiyou',
-      directory: Directory.Documents
-    })
-    for (const file of result.files) {
-      if (file.name.endsWith('.json')) {
-        files.push({
-          name: file.name,
-          path: `duiyou/${file.name}`,
-          directory: Directory.Documents,
-          location: 'Documents/duiyou',
-          mtime: file.mtime
-        })
-      }
-    }
-  } catch {
-    // 目录不存在，忽略
-  }
-
-  // 尝试 Download/duiyou 目录
-  try {
-    const result = await Filesystem.readdir({
-      path: 'Download/duiyou',
-      directory: Directory.ExternalStorage
-    })
-    for (const file of result.files) {
-      if (file.name.endsWith('.json')) {
-        files.push({
-          name: file.name,
-          path: `Download/duiyou/${file.name}`,
-          directory: Directory.ExternalStorage,
-          location: 'Download/duiyou',
-          mtime: file.mtime
-        })
-      }
-    }
-  } catch {
-    // 目录不存在，忽略
-  }
-
-  // 按修改时间排序（最新在前）
-  return files.sort((a, b) => (b.mtime || 0) - (a.mtime || 0))
-}
-
-/**
- * 读取原生文件内容
- */
-export async function readNativeFile(path, directory) {
-  const result = await Filesystem.readFile({
-    path,
-    directory,
-    encoding: Encoding.UTF8
-  })
-  return result.data
 }

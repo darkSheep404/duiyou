@@ -5,6 +5,9 @@ on:
     branches:
       - dev
 
+permissions:
+  contents: write
+
 jobs:
   build-apk:
     runs-on: ubuntu-latest
@@ -46,13 +49,39 @@ jobs:
         working-directory: android
         run: ./gradlew assembleDebug
 
-      - name: Get current date
-        id: date
-        run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+      - name: Prepare release info
+        id: info
+        run: |
+          echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+          echo "tag=v${{ github.run_number }}-$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
+          echo "sha_short=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Rename APK
+        run: |
+          cp android/app/build/outputs/apk/debug/app-debug.apk \
+             duiyou-v${{ steps.info.outputs.tag }}.apk
+
+      - name: Create Release and upload APK
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.info.outputs.tag }}
+          target_commitish: master
+          name: "鼠鼠友人帐 ${{ steps.info.outputs.tag }}"
+          body: |
+            ## 自动构建 - ${{ steps.info.outputs.date }}
+            
+            - 📦 构建来源: `dev` 分支 @ `${{ steps.info.outputs.sha_short }}`
+            - 🔨 构建编号: #${{ github.run_number }}
+            
+            ### 下载
+            下载下方 APK 文件安装即可使用。
+          files: duiyou-v${{ steps.info.outputs.tag }}.apk
+          draft: false
+          prerelease: false
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: duiyou-debug-${{ steps.date.outputs.date }}
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: duiyou-debug-${{ steps.info.outputs.date }}
+          path: duiyou-v${{ steps.info.outputs.tag }}.apk
           retention-days: 30
