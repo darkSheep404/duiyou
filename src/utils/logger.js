@@ -6,13 +6,27 @@
 const MAX_LOGS = 200
 const logs = []
 
+function formatDetail(detail) {
+  if (!detail) return null
+  if (typeof detail === 'string') return detail
+  // Error 对象：保留 name、message、stack
+  if (detail instanceof Error) {
+    const parts = [`${detail.name || 'Error'}: ${detail.message}`]
+    if (detail.stack) parts.push(detail.stack)
+    if (detail.cause) parts.push(`Caused by: ${detail.cause}`)
+    return parts.join('\n')
+  }
+  // 普通对象
+  try { return JSON.stringify(detail, null, 2) } catch { return String(detail) }
+}
+
 function addLog(level, message, detail = null) {
   const entry = {
     id: Date.now() + '_' + Math.random().toString(36).substr(2, 6),
     timestamp: new Date().toISOString(),
     level,
     message,
-    detail: detail ? (typeof detail === 'string' ? detail : JSON.stringify(detail, null, 2)) : null
+    detail: formatDetail(detail)
   }
   logs.unshift(entry) // 最新的在前面
   if (logs.length > MAX_LOGS) {

@@ -138,7 +138,7 @@
                   v-for="tag in item.tags"
                   :key="tag"
                   size="small"
-                  style="margin-right: 8px;"
+                  :style="getTagStyle(tag)"
                 >
                   {{ tag }}
                 </el-tag>
@@ -234,6 +234,7 @@ import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { useAppStore } from '../stores/app'
 import { Calendar, ChatDotRound, Location, Edit } from '@element-plus/icons-vue'
+import { getTagStyle } from '../utils/tagColor'
 
 const router = useRouter()
 const store = useAppStore()
@@ -346,6 +347,8 @@ const getChatTypeColor = (type) => {
 <style scoped>
 .timeline-page {
   width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
 .filter-card {
@@ -371,11 +374,12 @@ const getChatTypeColor = (type) => {
 
 .timeline-card {
   margin-left: 20px;
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .timeline-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12) !important;
 }
 
 .item-header {
@@ -391,6 +395,11 @@ const getChatTypeColor = (type) => {
   gap: 8px;
 }
 
+.item-header-right .el-tag {
+  border: none !important;
+  border-radius: 12px !important;
+}
+
 .item-title {
   display: flex;
   align-items: center;
@@ -399,12 +408,13 @@ const getChatTypeColor = (type) => {
 
 .item-title h4 {
   margin: 0;
-  color: #303133;
+  color: var(--dy-title);
   font-size: 16px;
+  font-weight: 700;
 }
 
 .item-icon {
-  color: #409eff;
+  color: var(--dy-accent-start);
 }
 
 .item-people {
@@ -412,7 +422,7 @@ const getChatTypeColor = (type) => {
   align-items: center;
   gap: 8px;
   margin-bottom: 8px;
-  color: #606266;
+  color: var(--dy-body);
   font-size: 14px;
 }
 
@@ -424,15 +434,15 @@ const getChatTypeColor = (type) => {
 
 .person-avatar {
   border: 2px solid #fff;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.2);
 }
 
 .more-people {
   margin-left: 8px;
   font-size: 12px;
-  color: #909399;
-  background: #f4f4f5;
-  padding: 2px 6px;
+  color: var(--dy-meta);
+  background: var(--dy-chip-bg);
+  padding: 2px 8px;
   border-radius: 10px;
 }
 
@@ -442,7 +452,7 @@ const getChatTypeColor = (type) => {
 }
 
 .people-names {
-  color: #606266;
+  color: var(--dy-body);
   font-weight: 500;
 }
 
@@ -451,20 +461,29 @@ const getChatTypeColor = (type) => {
   align-items: center;
   gap: 6px;
   margin-bottom: 8px;
-  color: #909399;
-  font-size: 14px;
+  color: var(--dy-meta);
+  font-size: 13px;
 }
 
 .item-description,
 .item-content {
-  color: #606266;
-  line-height: 1.5;
+  color: var(--dy-body);
+  line-height: 1.6;
   margin: 8px 0;
   white-space: pre-wrap;
 }
 
 .item-tags {
   margin-top: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.item-tags .el-tag {
+  border: none !important;
+  border-radius: 12px !important;
+  font-size: 11px;
 }
 
 .item-attachments {
@@ -481,20 +500,20 @@ const getChatTypeColor = (type) => {
 .attachment-item-img {
   width: 100%;
   aspect-ratio: 1;
-  border-radius: 8px;
+  border-radius: var(--dy-radius-sm);
   cursor: pointer;
   overflow: hidden;
 }
 
 .attachment-item-img :deep(img) {
-  border-radius: 8px;
+  border-radius: var(--dy-radius-sm);
 }
 
 .avatar {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--dy-gradient);
   color: white;
   border-radius: 50%;
   font-weight: bold;
@@ -537,13 +556,13 @@ const getChatTypeColor = (type) => {
 
 /* Element Plus Timeline 自定义样式 */
 :deep(.el-timeline-item__timestamp) {
-  color: #909399;
+  color: var(--dy-meta);
   font-size: 12px;
   font-weight: 500;
 }
 
 :deep(.el-timeline-item__node) {
-  background-color: #409eff;
+  background: var(--dy-accent-start);
 }
 
 :deep(.el-timeline-item__node--large) {

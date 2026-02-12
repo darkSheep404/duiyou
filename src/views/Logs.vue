@@ -97,6 +97,8 @@ const formatTime = (ts) => {
 <style scoped>
 .logs-page {
   width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .filter-card {
@@ -110,29 +112,39 @@ const formatTime = (ts) => {
   flex-wrap: wrap;
 }
 
+.filter-bar .el-button--danger {
+  border-radius: 14px !important;
+}
+
 .logs-list {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 }
 
 .log-card {
-  border-left: 4px solid #dcdfe6;
+  border-left: 4px solid #d9dbe3 !important;
+  border-radius: var(--dy-radius) !important;
+  transition: transform 0.15s;
+}
+
+.log-card:hover {
+  transform: translateY(-2px);
 }
 
 .log-card.log-error {
-  border-left-color: #f56c6c;
-  background: #fef0f0;
+  border-left-color: #f56c6c !important;
+  background: linear-gradient(135deg, #fff5f5, #fff0f0) !important;
 }
 
 .log-card.log-warn {
-  border-left-color: #e6a23c;
-  background: #fdf6ec;
+  border-left-color: #e6a23c !important;
+  background: linear-gradient(135deg, #fffbf0, #fdf6ec) !important;
 }
 
 .log-card.log-info {
-  border-left-color: #909399;
-  background: #f4f4f5;
+  border-left-color: var(--dy-accent-start) !important;
+  background: linear-gradient(135deg, #f8f9fe, #f0f2f8) !important;
 }
 
 .log-header {
@@ -142,15 +154,20 @@ const formatTime = (ts) => {
   margin-bottom: 8px;
 }
 
+.log-header .el-tag {
+  border-radius: 10px !important;
+}
+
 .log-time {
   font-size: 12px;
-  color: #909399;
+  color: var(--dy-meta);
 }
 
 .log-message {
-  color: #303133;
+  color: var(--dy-title);
   font-size: 14px;
   line-height: 1.5;
+  font-weight: 500;
 }
 
 .log-detail {
@@ -159,20 +176,21 @@ const formatTime = (ts) => {
 
 .detail-pre {
   font-size: 12px;
-  color: #606266;
+  color: var(--dy-body);
   white-space: pre-wrap;
   word-break: break-all;
   margin: 0;
-  padding: 8px;
-  background: #f5f7fa;
-  border-radius: 4px;
+  padding: 10px 12px;
+  background: rgba(0, 0, 0, 0.03);
+  border-radius: var(--dy-radius-sm);
   max-height: 200px;
   overflow-y: auto;
+  font-family: 'SF Mono', 'Menlo', 'Monaco', 'Consolas', monospace;
 }
 
 :deep(.el-collapse-item__header) {
   font-size: 12px;
-  color: #909399;
+  color: var(--dy-meta);
   height: 28px;
   line-height: 28px;
 }

@@ -90,7 +90,7 @@
 
           <!-- 标签 -->
           <div v-if="item.tags && item.tags.length" class="card-tags">
-            <span v-for="tag in item.tags" :key="tag" class="tag-chip">{{ tag }}</span>
+            <span v-for="tag in item.tags" :key="tag" class="tag-chip" :style="getTagStyle(tag)">{{ tag }}</span>
           </div>
 
           <!-- 底部计数 -->
@@ -113,6 +113,7 @@
 <script setup>
 import { ref, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { useAppStore } from '../stores/app'
+import { getTagStyle } from '../utils/tagColor'
 
 const store = useAppStore()
 const randomItems = ref([])
@@ -465,8 +466,6 @@ onBeforeUnmount(() => { if (scrollObserver) scrollObserver.disconnect() })
   font-size: 11px;
   padding: 3px 10px;
   border-radius: 12px;
-  background: #f0f1f5;
-  color: #606266;
   font-weight: 500;
 }
 

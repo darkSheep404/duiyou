@@ -453,6 +453,8 @@ const deleteChat = async (chat) => {
 <style scoped>
 .chats-page {
   width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
 .search-card {
@@ -473,6 +475,11 @@ const deleteChat = async (chat) => {
 
 .filter-btn {
   flex-shrink: 0;
+  border-radius: 20px !important;
+  background: var(--dy-gradient) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.3);
 }
 
 .chats-list {
@@ -482,11 +489,12 @@ const deleteChat = async (chat) => {
 }
 
 .chat-card {
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .chat-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12) !important;
 }
 
 .chat-header {
@@ -509,12 +517,12 @@ const deleteChat = async (chat) => {
 
 .person-avatar {
   border: 2px solid white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.2);
 }
 
 .more-people {
-  background: #f5f7fa;
-  color: #606266;
+  background: var(--dy-chip-bg);
+  color: var(--dy-body);
   border-radius: 50%;
   width: 32px;
   height: 32px;
@@ -537,13 +545,13 @@ const deleteChat = async (chat) => {
 }
 
 .person-name {
-  font-weight: 500;
-  color: #303133;
+  font-weight: 600;
+  color: var(--dy-title);
 }
 
 .chat-time {
   font-size: 12px;
-  color: #909399;
+  color: var(--dy-meta);
 }
 
 .chat-actions {
@@ -552,10 +560,15 @@ const deleteChat = async (chat) => {
   gap: 8px;
 }
 
+.chat-actions .el-tag {
+  border: none !important;
+  border-radius: 12px !important;
+}
+
 .chat-content {
   padding-left: 44px;
-  color: #606266;
-  line-height: 1.5;
+  color: var(--dy-body);
+  line-height: 1.6;
   white-space: pre-wrap;
 }
 
@@ -575,16 +588,16 @@ const deleteChat = async (chat) => {
   flex-direction: column;
   align-items: center;
   padding: 8px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  background: #f5f7fa;
+  border: 1px solid #eef0f5;
+  border-radius: var(--dy-radius-sm);
+  background: #fafbfd;
 }
 
 .attachment-thumbnail {
   width: 60px;
   height: 60px;
   object-fit: cover;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
 }
 
@@ -608,6 +621,7 @@ const deleteChat = async (chat) => {
 .chat-attachments .attachment-thumbnail {
   width: 80px;
   height: 80px;
+  border-radius: var(--dy-radius-sm);
 }
 
 @media (max-width: 768px) {

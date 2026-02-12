@@ -48,7 +48,7 @@
       </template>
       <div class="tags-list">
         <div v-for="tag in store.tags" :key="tag" class="tag-item">
-          <el-tag size="large" closable @close="deleteTag(tag)">
+          <el-tag size="large" closable @close="deleteTag(tag)" :style="getTagStyle(tag)">
             {{ tag }}
           </el-tag>
           <el-button type="text" size="small" @click="editTag(tag)">
@@ -217,6 +217,7 @@ import { getPlatform } from '../utils/platform'
 import { exportToFile, importFromFile } from '../utils/fileHelper'
 import { uploadToOss, downloadFromOss, checkOssBackup, formatGmtTime, isOssConfigured } from '../utils/ossSync'
 import { loadConfig, saveConfig as saveConfigToStorage, resetConfig } from '../config'
+import { getTagStyle } from '../utils/tagColor'
 
 const store = useAppStore()
 
@@ -568,6 +569,8 @@ onMounted(() => {
 <style scoped>
 .settings-page {
   width: 100%;
+  max-width: 800px;
+  margin: 0 auto;
 }
 
 .stats-card,
@@ -582,6 +585,8 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-weight: 600;
+  color: var(--dy-title);
 }
 
 .card-header-actions {
@@ -597,14 +602,18 @@ onMounted(() => {
 
 .stat-number {
   font-size: 32px;
-  font-weight: bold;
-  color: #409eff;
+  font-weight: 800;
+  background: var(--dy-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
   margin-bottom: 8px;
 }
 
 .stat-label {
-  color: #606266;
+  color: var(--dy-meta);
   font-size: 14px;
+  font-weight: 500;
 }
 
 .tags-list {
@@ -621,19 +630,32 @@ onMounted(() => {
   padding: 4px 0;
 }
 
+.tag-item .el-tag {
+  border: none !important;
+  border-radius: 12px !important;
+}
+
 .data-actions {
   display: flex;
   gap: 12px;
   flex-wrap: wrap;
 }
 
+.data-actions .el-button {
+  border-radius: 14px !important;
+}
+
 .app-info {
   line-height: 1.8;
-  color: #606266;
+  color: var(--dy-body);
 }
 
 .app-info p {
   margin: 8px 0;
+}
+
+.app-info strong {
+  color: var(--dy-title);
 }
 
 .data-hint {
@@ -643,6 +665,9 @@ onMounted(() => {
 
 .cloud-status {
   margin-bottom: 16px;
+  padding: 16px;
+  background: #fafbfd;
+  border-radius: var(--dy-radius-sm);
 }
 
 .status-row {
@@ -653,13 +678,14 @@ onMounted(() => {
 }
 
 .status-label {
-  color: #909399;
+  color: var(--dy-meta);
   min-width: 80px;
   flex-shrink: 0;
 }
 
 .status-value {
-  color: #303133;
+  color: var(--dy-title);
+  font-weight: 500;
 }
 
 .sync-actions {
@@ -668,15 +694,23 @@ onMounted(() => {
   flex-wrap: wrap;
 }
 
+.sync-actions .el-button {
+  border-radius: 14px !important;
+}
+
 .config-actions {
   display: flex;
   gap: 12px;
   margin-top: 8px;
 }
 
+.config-actions .el-button {
+  border-radius: 14px !important;
+}
+
 .form-tip {
   font-size: 12px;
-  color: #909399;
+  color: var(--dy-subtle);
   margin-top: 4px;
   line-height: 1.4;
 }

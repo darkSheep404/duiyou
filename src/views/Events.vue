@@ -83,7 +83,7 @@
                     v-for="person in getEventPeople(event)"
                     :key="person.id"
                     size="small"
-                    style="margin-right: 4px; margin-top: 4px;"
+                    :style="getTagStyle(person.name)"
                   >
                     {{ person.name }}
                   </el-tag>
@@ -138,7 +138,7 @@
               v-for="tag in event.tags"
               :key="tag"
               size="small"
-              style="margin-right: 8px;"
+              :style="getTagStyle(tag)"
             >
               {{ tag }}
             </el-tag>
@@ -296,6 +296,7 @@ import { useRoute } from 'vue-router'
 import { useAppStore } from '../stores/app'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { Search, Plus, Edit, Delete, Clock, Location, Upload } from '@element-plus/icons-vue'
+import { getTagStyle } from '../utils/tagColor'
 
 const route = useRoute()
 const store = useAppStore()
@@ -526,6 +527,8 @@ const deleteEvent = async (event) => {
 <style scoped>
 .events-page {
   width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
 .search-card {
@@ -546,6 +549,11 @@ const deleteEvent = async (event) => {
 
 .filter-btn {
   flex-shrink: 0;
+  border-radius: 20px !important;
+  background: var(--dy-gradient) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.3);
 }
 
 .events-list {
@@ -555,11 +563,13 @@ const deleteEvent = async (event) => {
 }
 
 .event-card {
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
+  overflow: hidden;
 }
 
 .event-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12) !important;
 }
 
 .event-header {
@@ -577,8 +587,9 @@ const deleteEvent = async (event) => {
 
 .event-title h3 {
   margin: 0 0 8px 0;
-  color: #303133;
-  font-size: 16px;
+  color: var(--dy-title);
+  font-size: 17px;
+  font-weight: 700;
 }
 
 .event-people {
@@ -594,12 +605,12 @@ const deleteEvent = async (event) => {
 
 .person-avatar {
   border: 2px solid white;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 2px 6px rgba(102, 126, 234, 0.2);
 }
 
 .more-people {
-  background: #f5f7fa;
-  color: #606266;
+  background: var(--dy-chip-bg);
+  color: var(--dy-body);
   border-radius: 50%;
   width: 24px;
   height: 24px;
@@ -613,13 +624,21 @@ const deleteEvent = async (event) => {
 .people-names {
   margin-top: 4px;
   width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.people-names .el-tag {
+  border: none !important;
+  border-radius: 12px !important;
 }
 
 .single-person {
   display: flex;
   align-items: center;
   gap: 8px;
-  color: #909399;
+  color: var(--dy-meta);
   font-size: 14px;
 }
 
@@ -643,21 +662,27 @@ const deleteEvent = async (event) => {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #606266;
-  font-size: 14px;
+  color: var(--dy-meta);
+  font-size: 13px;
 }
 
 .event-description {
   margin: 0 0 12px 0;
-  color: #606266;
-  line-height: 1.5;
+  color: var(--dy-body);
+  line-height: 1.6;
   white-space: pre-wrap;
 }
 
 .event-tags {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
+}
+
+.event-tags .el-tag {
+  border: none !important;
+  border-radius: 12px !important;
+  font-size: 11px;
 }
 
 .attachment-upload {
@@ -676,16 +701,16 @@ const deleteEvent = async (event) => {
   flex-direction: column;
   align-items: center;
   padding: 8px;
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  background: #f5f7fa;
+  border: 1px solid #eef0f5;
+  border-radius: var(--dy-radius-sm);
+  background: #fafbfd;
 }
 
 .attachment-thumbnail {
   width: 60px;
   height: 60px;
   object-fit: cover;
-  border-radius: 4px;
+  border-radius: 8px;
   cursor: pointer;
 }
 
@@ -709,6 +734,7 @@ const deleteEvent = async (event) => {
 .event-attachments .attachment-thumbnail {
   width: 80px;
   height: 80px;
+  border-radius: var(--dy-radius-sm);
 }
 
 @media (max-width: 768px) {

@@ -32,7 +32,7 @@
               v-for="tag in person.tags"
               :key="tag"
               size="small"
-              style="margin-right: 8px;"
+              :style="getTagStyle(tag)"
             >
               {{ tag }}
             </el-tag>
@@ -125,6 +125,7 @@ import {
   Document,
   Clock
 } from '@element-plus/icons-vue'
+import { getTagStyle } from '../utils/tagColor'
 
 const route = useRoute()
 const router = useRouter()
@@ -143,13 +144,14 @@ const editPerson = () => {
 <style scoped>
 .person-detail-page {
   width: 100%;
-  max-width: 1200px;
+  max-width: 900px;
   margin: 0 auto;
 }
 
 .back-btn {
   margin-bottom: 20px;
-  color: #409eff;
+  color: var(--dy-accent-start);
+  font-weight: 500;
 }
 
 .person-info-card {
@@ -162,7 +164,7 @@ const editPerson = () => {
   gap: 20px;
   margin-bottom: 20px;
   padding-bottom: 20px;
-  border-bottom: 1px solid #ebeef5;
+  border-bottom: 1px solid #f0f1f5;
 }
 
 .person-avatar-section {
@@ -180,11 +182,12 @@ const editPerson = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--dy-gradient);
   color: white;
   border-radius: 50%;
   font-size: 32px;
   font-weight: bold;
+  box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
 }
 
 .person-basic-info {
@@ -193,29 +196,46 @@ const editPerson = () => {
 
 .person-name {
   margin: 0 0 8px 0;
-  color: #303133;
+  color: var(--dy-title);
   font-size: 24px;
-  font-weight: 600;
+  font-weight: 700;
 }
 
 .person-nickname {
   margin: 0 0 12px 0;
-  color: #606266;
+  color: var(--dy-meta);
   font-size: 14px;
 }
 
 .person-tags {
   margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.person-tags .el-tag {
+  border: none !important;
+  border-radius: 12px !important;
+  font-size: 12px;
 }
 
 .person-actions {
   flex-shrink: 0;
 }
 
+.person-actions .el-button {
+  border-radius: 20px !important;
+  background: var(--dy-gradient) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.3);
+}
+
 .person-details {
-  background: #fafafa;
+  background: #fafbfd;
   padding: 20px;
-  border-radius: 8px;
+  border-radius: var(--dy-radius-sm);
 }
 
 .detail-item {
@@ -226,18 +246,18 @@ const editPerson = () => {
 }
 
 .detail-icon {
-  color: #409eff;
+  color: var(--dy-accent-start);
   width: 16px;
 }
 
 .detail-label {
-  color: #606266;
+  color: var(--dy-meta);
   font-weight: 500;
   min-width: 60px;
 }
 
 .detail-value {
-  color: #303133;
+  color: var(--dy-title);
   flex: 1;
   word-break: break-all;
 }
@@ -251,9 +271,13 @@ const editPerson = () => {
   align-items: center;
   gap: 8px;
   margin-bottom: 16px;
-  color: #303133;
+  color: var(--dy-title);
   font-size: 18px;
-  font-weight: 600;
+  font-weight: 700;
+}
+
+.section-title .el-icon {
+  color: var(--dy-accent-start);
 }
 
 /* 移动端适配 */
@@ -266,6 +290,10 @@ const editPerson = () => {
   
   .person-basic-info {
     text-align: center;
+  }
+
+  .person-tags {
+    justify-content: center;
   }
   
   .person-details {

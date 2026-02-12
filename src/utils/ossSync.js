@@ -50,7 +50,7 @@ export async function uploadToOss(jsonString) {
       return { success: false, message: `上传失败 (${response.status}): ${text}` }
     }
   } catch (error) {
-    logError('上传异常', error.message)
+    logError('上传异常', error)
     return { success: false, message: '上传失败: ' + error.message }
   }
 }
@@ -85,7 +85,7 @@ export async function downloadFromOss() {
       return { success: false, message: `下载失败 (${response.status})` }
     }
   } catch (error) {
-    logError('下载异常', error.message)
+    logError('下载异常', error)
     return { success: false, message: '下载失败: ' + error.message }
   }
 }
@@ -112,7 +112,7 @@ export async function checkOssBackup() {
     logError('检查云端备份: 不存在或状态异常')
     return { exists: false }
   } catch (error) {
-    logError('检查云端备份异常', error?.message || error)
+    logError('检查云端备份异常', error)
     return { exists: false }
   }
 }

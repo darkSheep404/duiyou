@@ -68,7 +68,7 @@
                 v-for="tag in person.tags"
                 :key="tag"
                 size="small"
-                style="margin-right: 8px; margin-bottom: 4px;"
+                :style="getTagStyle(tag)"
               >
                 {{ tag }}
               </el-tag>
@@ -199,6 +199,7 @@ import { useRouter } from 'vue-router'
 import { useAppStore } from '../stores/app'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { Search, Plus, Edit, Delete, Phone, ChatDotRound, Upload } from '@element-plus/icons-vue'
+import { getTagStyle } from '../utils/tagColor'
 
 const router = useRouter()
 const store = useAppStore()
@@ -362,6 +363,8 @@ const handleDialogClose = () => {
 <style scoped>
 .people-page {
   width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
 .search-card {
@@ -382,6 +385,15 @@ const handleDialogClose = () => {
 
 .filter-btn {
   flex-shrink: 0;
+  border-radius: 20px !important;
+  background: var(--dy-gradient) !important;
+  border: none !important;
+  color: #fff !important;
+  box-shadow: 0 4px 14px rgba(102, 126, 234, 0.3);
+}
+
+.filter-btn:hover {
+  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
 .people-grid {
@@ -391,11 +403,12 @@ const handleDialogClose = () => {
 }
 
 .person-card {
-  transition: transform 0.2s;
+  transition: transform 0.2s, box-shadow 0.2s;
 }
 
 .person-card:hover {
-  transform: translateY(-2px);
+  transform: translateY(-4px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12) !important;
 }
 
 .person-content {
@@ -403,11 +416,6 @@ const handleDialogClose = () => {
   gap: 15px;
   position: relative;
   cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.person-content:hover {
-  transform: translateY(-2px);
 }
 
 .person-avatar {
@@ -419,10 +427,11 @@ const handleDialogClose = () => {
   height: 60px;
   border-radius: 50%;
   object-fit: cover;
+  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.2);
 }
 
 .avatar-placeholder {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: var(--dy-gradient);
 }
 
 .avatar-upload {
@@ -447,20 +456,21 @@ const handleDialogClose = () => {
 .person-info h3 {
   margin: 0 0 4px 0;
   font-size: 16px;
-  color: #303133;
+  color: var(--dy-title);
+  font-weight: 700;
 }
 
 .nickname {
   margin: 0 0 8px 0;
-  color: #909399;
+  color: var(--dy-meta);
   font-size: 14px;
 }
 
 .description {
   margin: 0 0 12px 0;
-  color: #606266;
+  color: var(--dy-body);
   font-size: 13px;
-  line-height: 1.4;
+  line-height: 1.5;
   overflow: hidden;
   text-overflow: ellipsis;
   display: -webkit-box;
@@ -471,6 +481,15 @@ const handleDialogClose = () => {
 
 .person-tags {
   margin-bottom: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.person-tags .el-tag {
+  border: none !important;
+  border-radius: 12px !important;
+  font-size: 11px;
 }
 
 .contact-info {
@@ -484,7 +503,7 @@ const handleDialogClose = () => {
   align-items: center;
   gap: 6px;
   font-size: 12px;
-  color: #909399;
+  color: var(--dy-meta);
 }
 
 .person-actions {
@@ -527,6 +546,10 @@ const handleDialogClose = () => {
     margin-bottom: 6px;
     -webkit-line-clamp: 1;
     line-clamp: 1;
+  }
+
+  .person-tags {
+    justify-content: center;
   }
 
   .person-tags .el-tag {

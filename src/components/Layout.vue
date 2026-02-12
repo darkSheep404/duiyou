@@ -150,33 +150,39 @@ const navItems = [
 }
 
 .sidebar {
-  background-color: #2c3e50;
+  background: linear-gradient(180deg, #1a1c2e 0%, #2c3e50 100%);
   color: #ecf0f1;
 }
 
 .logo {
-  padding: 20px;
+  padding: 28px 20px 20px;
   text-align: center;
-  border-bottom: 1px solid #34495e;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .logo h2 {
   margin: 0;
-  color: #3498db;
+  background: var(--dy-gradient);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-size: 20px;
+  letter-spacing: 1px;
 }
 
 .logo p {
   margin: 5px 0 0 0;
   font-size: 12px;
-  color: #bdc3c7;
+  color: #7f8c9b;
 }
 
 .header {
-  background-color: white;
-  border-bottom: 1px solid #e4e7ed;
+  background: var(--dy-card-bg);
+  border-bottom: none;
   display: flex;
   align-items: center;
-  padding: 0 20px;
+  padding: 0 24px;
+  box-shadow: 0 1px 8px rgba(0, 0, 0, 0.04);
 }
 
 .header-content {
@@ -188,7 +194,9 @@ const navItems = [
 
 .page-title {
   margin: 0;
-  color: #2c3e50;
+  color: var(--dy-title);
+  font-weight: 700;
+  font-size: 18px;
 }
 
 .header-actions {
@@ -198,7 +206,7 @@ const navItems = [
 }
 
 .main-content {
-  background-color: #f5f7fa;
+  background-color: var(--dy-bg);
   padding: 20px;
 }
 
@@ -207,10 +215,11 @@ const navItems = [
   bottom: 0;
   left: 0;
   right: 0;
-  background: white;
-  border-top: 1px solid #e4e7ed;
+  background: var(--dy-card-bg);
+  border-top: none;
   z-index: 1000;
-  padding: 8px 0;
+  padding: 6px 0 env(safe-area-inset-bottom, 8px);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.06);
 }
 
 .nav-buttons {
@@ -223,19 +232,26 @@ const navItems = [
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: 8px;
+  padding: 6px 8px;
   cursor: pointer;
-  transition: color 0.3s;
-  color: #909399;
+  transition: color 0.25s, transform 0.15s;
+  color: var(--dy-meta);
+  border-radius: 12px;
+}
+
+.nav-item:active {
+  transform: scale(0.92);
 }
 
 .nav-item.active {
-  color: #409eff;
+  color: var(--dy-accent-start);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.10), rgba(118, 75, 162, 0.08));
 }
 
 .nav-item span {
-  font-size: 12px;
-  margin-top: 4px;
+  font-size: 11px;
+  margin-top: 3px;
+  font-weight: 500;
 }
 
 @media (max-width: 768px) {
@@ -251,10 +267,10 @@ const navItems = [
   justify-content: center;
   gap: 12px;
   padding: 8px 16px;
-  background: linear-gradient(90deg, #e8f4fd, #d9ecff);
-  color: #409eff;
+  background: var(--dy-gradient);
+  color: #fff;
   font-size: 13px;
   font-weight: 500;
-  border-bottom: 1px solid #b3d8ff;
+  border-bottom: none;
 }
 </style>
