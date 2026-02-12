@@ -89,6 +89,82 @@
       </div>
     </el-card>
 
+    <!-- ☁️ 云端同步 -->
+    <el-card class="sync-card">
+      <template #header>
+        <div class="card-header">
+          <span>☁️ 云端同步</span>
+          <el-button v-if="ossConfigured" size="small" text @click="refreshCloudStatus" :loading="checkingCloud">
+            <el-icon><Refresh /></el-icon>
+            刷新状态
+          </el-button>
+        </div>
+      </template>
+
+      <!-- 同步设置 -->
+      <el-form label-position="top" size="default" class="sync-config-form">
+        <el-form-item label="OSS 地址">
+          <el-input
+            v-model="syncConfig.ossBaseUrl"
+            placeholder="your-bucket.oss-cn-shenzhen.aliyuncs.com"
+            clearable
+          >
+            <template #prepend>https://</template>
+          </el-input>
+          <div class="form-tip">阿里云 OSS Bucket 的公共访问地址（需开启公共读写）</div>
+        </el-form-item>
+        <el-form-item label="备份文件名">
+          <el-input
+            v-model="syncConfig.ossFileName"
+            placeholder="duiyou-backup.json"
+            clearable
+          />
+          <div class="form-tip">可用不同文件名区分多台设备或多个备份</div>
+        </el-form-item>
+        <div class="config-actions">
+          <el-button type="primary" size="small" @click="saveSyncConfig">保存配置</el-button>
+          <el-button size="small" @click="resetSyncConfig">清空配置</el-button>
+        </div>
+      </el-form>
+
+      <el-divider />
+
+      <!-- 未配置提示 -->
+      <div v-if="!ossConfigured" class="cloud-not-configured">
+        <el-empty description="请先配置 OSS 地址以启用云同步" :image-size="60" />
+      </div>
+
+      <!-- 已配置：云端状态 + 操作按钮 -->
+      <template v-else>
+        <div class="cloud-status">
+          <div class="status-row">
+            <span class="status-label">云端备份：</span>
+            <span v-if="checkingCloud" class="status-value">检查中...</span>
+            <el-tag v-else-if="cloudInfo.exists" type="success" size="small">有备份</el-tag>
+            <el-tag v-else type="info" size="small">暂无备份</el-tag>
+          </div>
+          <div v-if="cloudInfo.exists" class="status-row">
+            <span class="status-label">云端时间：</span>
+            <span class="status-value">{{ cloudInfo.lastModifiedFormatted }}</span>
+          </div>
+          <div v-if="cloudInfo.exists && cloudInfo.syncTime" class="status-row">
+            <span class="status-label">上传时间：</span>
+            <span class="status-value">{{ cloudInfo.syncTime }}</span>
+          </div>
+        </div>
+        <div class="sync-actions">
+          <el-button type="primary" @click="uploadToCloud" :loading="uploading">
+            <el-icon><Upload /></el-icon>
+            上传到云端
+          </el-button>
+          <el-button type="success" @click="downloadFromCloud" :loading="downloading">
+            <el-icon><Download /></el-icon>
+            从云端下载
+          </el-button>
+        </div>
+      </template>
+    </el-card>
+
     <!-- 应用信息 -->
     <el-card class="info-card">
       <template #header>
@@ -127,12 +203,14 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted, reactive } from 'vue'
 import { useAppStore } from '../stores/app'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { Plus, Edit, Delete, Download, Upload } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, Download, Upload, Refresh } from '@element-plus/icons-vue'
 import { getPlatform } from '../utils/platform'
 import { exportToFile, importFromFile } from '../utils/fileHelper'
+import { uploadToOss, downloadFromOss, checkOssBackup, formatGmtTime, isOssConfigured } from '../utils/ossSync'
+import { loadConfig, saveConfig as saveConfigToStorage, resetConfig } from '../config'
 
 const store = useAppStore()
 
@@ -144,6 +222,27 @@ const platformName = computed(() => {
 
 // 加载状态
 const exporting = ref(false)
+const uploading = ref(false)
+const downloading = ref(false)
+const checkingCloud = ref(false)
+
+// 云端信息
+const cloudInfo = reactive({
+  exists: false,
+  lastModified: '',
+  lastModifiedFormatted: '',
+  syncTime: ''
+})
+
+// 同步配置
+const syncConfig = reactive({ ...loadConfig() })
+// 移除 https:// 前缀用于显示（prepend 已有）
+if (syncConfig.ossBaseUrl && syncConfig.ossBaseUrl.startsWith('https://')) {
+  syncConfig.ossBaseUrl = syncConfig.ossBaseUrl.replace('https://', '')
+}
+
+// 是否已配置 OSS（响应式标记，保存/重置配置时更新）
+const ossConfigured = ref(isOssConfigured())
 
 // 标签管理
 const showTagDialog = ref(false)
@@ -268,6 +367,196 @@ const clearAllData = async () => {
     // 用户取消操作
   }
 }
+
+// ========== 云端同步 ==========
+
+// 刷新云端状态
+const refreshCloudStatus = async () => {
+  if (!isOssConfigured()) return
+  checkingCloud.value = true
+  try {
+    const info = await checkOssBackup()
+    cloudInfo.exists = info.exists
+    cloudInfo.lastModified = info.lastModified || ''
+    cloudInfo.lastModifiedFormatted = formatGmtTime(info.lastModified)
+
+    // 尝试获取 JSON 中的 syncTime（更精确）
+    if (info.exists) {
+      try {
+        const result = await downloadFromOss()
+        if (result.success && result.data) {
+          const parsed = JSON.parse(result.data)
+          cloudInfo.syncTime = parsed.syncTime
+            ? new Date(parsed.syncTime).toLocaleString('zh-CN')
+            : ''
+        }
+      } catch {
+        cloudInfo.syncTime = ''
+      }
+    }
+  } catch {
+    cloudInfo.exists = false
+  } finally {
+    checkingCloud.value = false
+  }
+}
+
+// 上传到云端
+const uploadToCloud = async () => {
+  if (!isOssConfigured()) {
+    ElMessage.warning('请先配置 OSS 地址并保存')
+    return
+  }
+  // 先检查云端是否已有数据
+  checkingCloud.value = true
+  const info = await checkOssBackup()
+  checkingCloud.value = false
+
+  let confirmMsg = '确定将本地数据上传到云端？'
+  if (info.exists) {
+    confirmMsg = `云端已有备份（${formatGmtTime(info.lastModified)}），上传将覆盖云端数据，确认？`
+  }
+
+  try {
+    await ElMessageBox.confirm(confirmMsg, '上传到云端', {
+      confirmButtonText: '确认上传',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+  } catch {
+    return // 用户取消
+  }
+
+  uploading.value = true
+  try {
+    const data = store.exportData()
+    const result = await uploadToOss(data)
+    if (result.success) {
+      ElMessage.success(result.message)
+      refreshCloudStatus()
+    } else {
+      ElMessage.error(result.message)
+    }
+  } catch (error) {
+    ElMessage.error('上传失败: ' + error.message)
+  } finally {
+    uploading.value = false
+  }
+}
+
+// 从云端下载
+const downloadFromCloud = async () => {
+  if (!isOssConfigured()) {
+    ElMessage.warning('请先配置 OSS 地址并保存')
+    return
+  }
+  // 先检查云端状态
+  checkingCloud.value = true
+  const info = await checkOssBackup()
+  checkingCloud.value = false
+
+  if (!info.exists) {
+    ElMessage.warning('云端暂无备份数据')
+    return
+  }
+
+  const cloudTimeStr = formatGmtTime(info.lastModified)
+
+  try {
+    const action = await ElMessageBox({
+      title: '从云端下载',
+      message: `☁️ 云端数据时间：${cloudTimeStr}\n\n请选择下载方式：`,
+      distinguishCancelAndClose: true,
+      confirmButtonText: '覆盖本地',
+      cancelButtonText: '智能合并',
+      showCancelButton: true,
+      type: 'info',
+      customClass: 'sync-dialog'
+    })
+    // confirm = 覆盖本地
+    await doDownload('overwrite')
+  } catch (action) {
+    if (action === 'cancel') {
+      // cancel = 智能合并
+      await doDownload('merge')
+    }
+    // close = 关闭对话框，不做操作
+  }
+}
+
+// 执行下载
+const doDownload = async (mode) => {
+  downloading.value = true
+  try {
+    const result = await downloadFromOss()
+    if (!result.success) {
+      ElMessage.error(result.message)
+      return
+    }
+
+    if (mode === 'overwrite') {
+      const success = store.importData(result.data)
+      if (success) {
+        ElMessage.success('已用云端数据覆盖本地')
+      } else {
+        ElMessage.error('云端数据格式错误')
+      }
+    } else {
+      // 智能合并
+      const mergeResult = store.mergeData(result.data)
+      if (mergeResult.success) {
+        ElMessage.success(mergeResult.message)
+      } else {
+        ElMessage.error(mergeResult.message)
+      }
+    }
+  } catch (error) {
+    ElMessage.error('下载失败: ' + error.message)
+  } finally {
+    downloading.value = false
+  }
+}
+
+// ========== 同步设置 ==========
+
+const saveSyncConfig = () => {
+  const url = syncConfig.ossBaseUrl ? syncConfig.ossBaseUrl.trim() : ''
+  const config = {
+    ossBaseUrl: url ? (url.startsWith('http') ? url : `https://${url}`) : '',
+    ossFileName: (syncConfig.ossFileName && syncConfig.ossFileName.trim()) || 'duiyou-backup.json'
+  }
+  saveConfigToStorage(config)
+  ossConfigured.value = !!config.ossBaseUrl
+  if (config.ossBaseUrl) {
+    ElMessage.success('同步配置已保存')
+    refreshCloudStatus()
+  } else {
+    ElMessage.info('已保存（OSS 地址为空，云同步未启用）')
+    cloudInfo.exists = false
+    cloudInfo.lastModified = ''
+    cloudInfo.lastModifiedFormatted = ''
+    cloudInfo.syncTime = ''
+  }
+}
+
+const resetSyncConfig = () => {
+  resetConfig()
+  ossConfigured.value = false
+  syncConfig.ossBaseUrl = ''
+  syncConfig.ossFileName = 'duiyou-backup.json'
+  cloudInfo.exists = false
+  cloudInfo.lastModified = ''
+  cloudInfo.lastModifiedFormatted = ''
+  cloudInfo.syncTime = ''
+  ElMessage.success('已清空同步配置')
+}
+
+// 页面加载时检查云端状态
+onMounted(() => {
+  if (ossConfigured.value) {
+    refreshCloudStatus()
+  }
+})
 </script>
 
 <style scoped>
@@ -278,6 +567,7 @@ const clearAllData = async () => {
 .stats-card,
 .tags-card,
 .data-card,
+.sync-card,
 .info-card {
   margin-bottom: 20px;
 }
@@ -339,12 +629,64 @@ const clearAllData = async () => {
   padding: 8px 0;
 }
 
+.cloud-status {
+  margin-bottom: 16px;
+}
+
+.status-row {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.status-label {
+  color: #909399;
+  min-width: 80px;
+  flex-shrink: 0;
+}
+
+.status-value {
+  color: #303133;
+}
+
+.sync-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.config-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.form-tip {
+  font-size: 12px;
+  color: #909399;
+  margin-top: 4px;
+  line-height: 1.4;
+}
+
+.sync-config-form {
+  margin-bottom: 0;
+}
+
+.cloud-not-configured {
+  padding: 8px 0;
+}
+
 @media (max-width: 768px) {
-  .data-actions {
+  .data-actions,
+  .sync-actions,
+  .config-actions {
     flex-direction: column;
   }
 
-  .data-actions .el-button {
+  .data-actions .el-button,
+  .sync-actions .el-button,
+  .config-actions .el-button {
     width: 100%;
   }
 

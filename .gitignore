@@ -3,4 +3,5 @@
 /export_json/
 /dist/
 /android/
+.env.local
 
