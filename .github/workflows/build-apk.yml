@@ -42,68 +42,28 @@ jobs:
           echo "--- Patched build.gradle ---"
           cat "$GRADLE"
 
-      - name: Generate Android app icons from icon.png
+      - name: Replace default icons and splash with custom icon.png
         run: |
           sudo apt-get install -y imagemagick
           ICON_SRC="public/icon.png"
           RES_DIR="android/app/src/main/res"
-          # 生成各 DPI 启动图标（圆角 + 圆形）
-          for size_dir in "mdpi:48" "hdpi:72" "xhdpi:96" "xxhdpi:144" "xxxhdpi:192"; do
-            dir="${size_dir%%:*}"
-            size="${size_dir##*:}"
-            mkdir -p "$RES_DIR/mipmap-$dir"
+          # 替换各密度的启动图标
+          for entry in "mdpi:48" "hdpi:72" "xhdpi:96" "xxhdpi:144" "xxxhdpi:192"; do
+            dir="${entry%%:*}"; size="${entry##*:}"
             convert "$ICON_SRC" -resize ${size}x${size} "$RES_DIR/mipmap-$dir/ic_launcher.png"
-            convert "$ICON_SRC" -resize ${size}x${size} \
-              \( +clone -threshold -1 -negate -fill white -draw "circle $((size/2)),$((size/2)) $((size/2)),0" \) \
-              -alpha off -compose copy_opacity -composite \
-              "$RES_DIR/mipmap-$dir/ic_launcher_round.png"
+            convert "$ICON_SRC" -resize ${size}x${size} "$RES_DIR/mipmap-$dir/ic_launcher_round.png"
           done
-          # 生成前景图用于自适应图标（所有密度）
-          for fg_dir in "mdpi:108" "hdpi:162" "xhdpi:216" "xxhdpi:324" "xxxhdpi:432"; do
-            dir="${fg_dir%%:*}"
-            size="${fg_dir##*:}"
-            mkdir -p "$RES_DIR/mipmap-$dir"
+          # 替换各密度的自适应图标前景图
+          for entry in "mdpi:108" "hdpi:162" "xhdpi:216" "xxhdpi:324" "xxxhdpi:432"; do
+            dir="${entry%%:*}"; size="${entry##*:}"
             convert "$ICON_SRC" -resize ${size}x${size} -gravity center -background none -extent ${size}x${size} \
               "$RES_DIR/mipmap-$dir/ic_launcher_foreground.png"
           done
-          # 删除默认矢量图标（防止覆盖自定义 PNG）
+          # 删除默认矢量图标（否则会覆盖自定义 PNG）
           rm -f "$RES_DIR/drawable-v24/ic_launcher_foreground.xml"
           rm -f "$RES_DIR/drawable/ic_launcher_background.xml"
-
-      - name: Generate splash screen resources
-        run: |
-          ICON_SRC="public/icon.png"
-          RES_DIR="android/app/src/main/res"
-          # 生成各 DPI 启动页居中 logo
-          for size_dir in "mdpi:120" "hdpi:180" "xhdpi:240" "xxhdpi:360" "xxxhdpi:480"; do
-            dir="${size_dir%%:*}"
-            size="${size_dir##*:}"
-            mkdir -p "$RES_DIR/drawable-$dir"
-            convert "$ICON_SRC" -resize ${size}x${size} "$RES_DIR/drawable-$dir/splash.png"
-          done
-          # 删除 Capacitor 默认的 splash.png，避免与 splash.xml 冲突
-          rm -f "$RES_DIR/drawable/splash.png"
-          # 启动页 XML（白色背景 + 居中 logo）
-          mkdir -p "$RES_DIR/drawable"
-          cat > "$RES_DIR/drawable/splash.xml" << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
-            <item android:drawable="@color/splash_bg"/>
-            <item android:gravity="center" android:width="180dp" android:height="180dp">
-              <bitmap android:src="@drawable/splash" android:gravity="center"/>
-            </item>
-          </layer-list>
-          EOF
-          # splash 背景色
-          mkdir -p "$RES_DIR/values"
-          if ! grep -q "splash_bg" "$RES_DIR/values/colors.xml" 2>/dev/null; then
-            cat > "$RES_DIR/values/colors.xml" << 'EOF'
-          <?xml version="1.0" encoding="utf-8"?>
-          <resources>
-            <color name="splash_bg">#FFFFFF</color>
-          </resources>
-          EOF
-          fi
+          # 替换默认启动页图片
+          convert "$ICON_SRC" -resize 480x480 "$RES_DIR/drawable/splash.png"
 
       - name: Sync Capacitor Android
         run: npx cap sync android
