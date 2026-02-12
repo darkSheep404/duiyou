@@ -81,6 +81,8 @@ jobs:
             mkdir -p "$RES_DIR/drawable-$dir"
             convert "$ICON_SRC" -resize ${size}x${size} "$RES_DIR/drawable-$dir/splash.png"
           done
+          # 删除 Capacitor 默认的 splash.png，避免与 splash.xml 冲突
+          rm -f "$RES_DIR/drawable/splash.png"
           # 启动页 XML（白色背景 + 居中 logo）
           mkdir -p "$RES_DIR/drawable"
           cat > "$RES_DIR/drawable/splash.xml" << 'EOF'
