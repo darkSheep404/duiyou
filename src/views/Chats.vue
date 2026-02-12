@@ -175,13 +175,23 @@
             value-format="YYYY-MM-DDTHH:mm:ss"
           />
         </el-form-item>
+        <el-form-item v-if="!editingChat" label="批量添加">
+          <div class="batch-mode-row">
+            <el-switch v-model="batchMode" />
+            <span class="batch-mode-hint" v-if="batchMode">每行文本将创建一条独立记录</span>
+          </div>
+        </el-form-item>
         <el-form-item label="内容" required>
           <el-input
             v-model="formData.content"
             type="textarea"
-            rows="6"
-            placeholder="请输入聊天内容"
+            :rows="batchMode && !editingChat ? 10 : 6"
+            :placeholder="batchMode && !editingChat ? '每行一条记录，例如：\n今天聊了工作的事\n讨论了周末计划\n分享了一个有趣的视频' : '请输入聊天内容'"
           />
+          <div v-if="batchMode && !editingChat && formData.content.trim()" class="batch-preview">
+            <el-icon><List /></el-icon>
+            将创建 <strong>{{ formData.content.split('\n').filter(l => l.trim()).length }}</strong> 条记录
+          </div>
         </el-form-item>
         <el-form-item label="附件">
           <div class="attachment-upload">
@@ -235,7 +245,7 @@ import { ref, computed, reactive, onMounted, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { useAppStore } from '../stores/app'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { Search, Plus, Edit, Delete, Upload } from '@element-plus/icons-vue'
+import { Search, Plus, Edit, Delete, Upload, List } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const store = useAppStore()
@@ -248,6 +258,7 @@ const selectedTag = ref('')
 // 对话框控制
 const showAddDialog = ref(false)
 const editingChat = ref(null)
+const batchMode = ref(false)
 
 // 表单数据
 const formData = reactive({
@@ -359,6 +370,7 @@ const resetForm = () => {
   formData.content = ''
   formData.attachments = []
   editingChat.value = null
+  batchMode.value = false
 }
 
 // 编辑聊天记录
@@ -401,6 +413,25 @@ const saveChat = () => {
   if (editingChat.value) {
     store.updateChat(chatData)
     ElMessage.success('聊天记录已更新')
+  } else if (batchMode.value) {
+    // 批量模式：按换行拆分，每行一条记录
+    const lines = formData.content.split('\n').map(l => l.trim()).filter(l => l)
+    if (lines.length === 0) {
+      ElMessage.error('请输入聊天内容')
+      return
+    }
+    const baseTime = formData.time ? new Date(formData.time) : new Date()
+    lines.forEach((line, index) => {
+      store.addChat({
+        person_ids: formData.person_ids,
+        type: formData.type,
+        // 每条记录时间递增1秒，保证排序顺序
+        time: new Date(baseTime.getTime() + index * 1000).toISOString(),
+        content: line,
+        attachments: index === 0 ? formData.attachments : []
+      })
+    })
+    ElMessage.success(`已批量添加 ${lines.length} 条聊天记录`)
   } else {
     store.addChat(chatData)
     ElMessage.success('聊天记录添加成功')
@@ -622,6 +653,37 @@ const deleteChat = async (chat) => {
   width: 80px;
   height: 80px;
   border-radius: var(--dy-radius-sm);
+}
+
+.batch-mode-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.batch-mode-hint {
+  font-size: 12px;
+  color: var(--dy-meta);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.08), rgba(118, 75, 162, 0.08));
+  padding: 2px 10px;
+  border-radius: 10px;
+}
+
+.batch-preview {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 8px;
+  font-size: 13px;
+  color: var(--dy-meta);
+  background: linear-gradient(135deg, rgba(102, 126, 234, 0.06), rgba(118, 75, 162, 0.06));
+  padding: 6px 12px;
+  border-radius: 10px;
+}
+
+.batch-preview strong {
+  color: #667eea;
+  font-size: 15px;
 }
 
 @media (max-width: 768px) {
