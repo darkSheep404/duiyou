@@ -2,40 +2,48 @@
   <div class="events-page">
     <!-- 搜索和筛选栏 -->
     <el-card class="search-card">
-      <el-row :gutter="20">
-        <el-col :xs="24" :sm="8">
-          <el-input
-            v-model="searchText"
-            placeholder="搜索事件..."
-            clearable
-          >
-            <template #prefix>
-              <el-icon><Search /></el-icon>
-            </template>
-          </el-input>
-        </el-col>
-        <el-col :xs="24" :sm="8">
-          <el-select
-            v-model="selectedPerson"
-            placeholder="按人物筛选"
-            clearable
-            style="width: 100%"
-          >
-            <el-option
-              v-for="person in store.people"
-              :key="person.id"
-              :label="person.name"
-              :value="person.id"
-            />
-          </el-select>
-        </el-col>
-        <el-col :xs="24" :sm="8">
-          <el-button type="primary" @click="showAddDialog = true" style="width: 100%">
-            <el-icon><Plus /></el-icon>
-            添加事件
-          </el-button>
-        </el-col>
-      </el-row>
+      <div class="filter-bar">
+        <el-input
+          v-model="searchText"
+          placeholder="搜索事件..."
+          clearable
+          class="filter-item"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+        <el-select
+          v-model="selectedPerson"
+          placeholder="按人物筛选"
+          clearable
+          class="filter-item"
+        >
+          <el-option
+            v-for="person in store.people"
+            :key="person.id"
+            :label="person.name"
+            :value="person.id"
+          />
+        </el-select>
+        <el-select
+          v-model="selectedTag"
+          placeholder="按标签筛选"
+          clearable
+          class="filter-item"
+        >
+          <el-option
+            v-for="tag in store.tags"
+            :key="tag"
+            :label="tag"
+            :value="tag"
+          />
+        </el-select>
+        <el-button type="primary" @click="showAddDialog = true" class="filter-btn">
+          <el-icon><Plus /></el-icon>
+          <span class="btn-text">添加事件</span>
+        </el-button>
+      </div>
     </el-card>
 
     <!-- 事件列表 -->
@@ -137,16 +145,16 @@
           </div>
           
           <div v-if="event.attachments && event.attachments.length" class="event-attachments">
-            <div 
-              v-for="(attachment, index) in event.attachments" 
-              :key="index"
-              class="attachment-preview"
-            >
-              <img 
-                v-if="attachment.type === 'image'"
-                :src="attachment.url" 
+            <div class="attachment-preview">
+              <el-image
+                v-for="(attachment, index) in event.attachments.filter(a => a.type === 'image')"
+                :key="index"
+                :src="attachment.url"
+                fit="cover"
                 class="attachment-thumbnail"
-                @click="previewImage(attachment.url)"
+                :preview-src-list="event.attachments.filter(a => a.type === 'image').map(a => a.url)"
+                :initial-index="index"
+                preview-teleported
               />
             </div>
           </div>
@@ -283,16 +291,19 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAppStore } from '../stores/app'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { Search, Plus, Edit, Delete, Clock, Location, Upload } from '@element-plus/icons-vue'
 
+const route = useRoute()
 const store = useAppStore()
 
 // 搜索和筛选
 const searchText = ref('')
 const selectedPerson = ref('')
+const selectedTag = ref('')
 
 // 对话框控制
 const showAddDialog = ref(false)
@@ -314,6 +325,18 @@ const formData = reactive({
 const filteredEvents = computed(() => {
   let result = [...store.events].sort((a, b) => new Date(b.time) - new Date(a.time))
   
+  // 全局标签过滤
+  if (store.globalFilterTag) {
+    result = result.filter(event => {
+      if (event.tags && event.tags.includes(store.globalFilterTag)) return true
+      const personIds = event.person_ids || [event.person_id].filter(Boolean)
+      return personIds.some(id => {
+        const p = store.getPersonById(id)
+        return p && p.tags && p.tags.includes(store.globalFilterTag)
+      })
+    })
+  }
+  
   if (searchText.value) {
     const search = searchText.value.toLowerCase()
     result = result.filter(event => 
@@ -325,8 +348,20 @@ const filteredEvents = computed(() => {
   
   if (selectedPerson.value) {
     result = result.filter(event => {
-      const personIds = event.person_ids || [event.person_id].filter(Boolean) // 兼容旧数据
+      const personIds = event.person_ids || [event.person_id].filter(Boolean)
       return personIds.includes(selectedPerson.value)
+    })
+  }
+
+  // 标签筛选
+  if (selectedTag.value) {
+    result = result.filter(event => {
+      if (event.tags && event.tags.includes(selectedTag.value)) return true
+      const personIds = event.person_ids || [event.person_id].filter(Boolean)
+      return personIds.some(id => {
+        const p = store.getPersonById(id)
+        return p && p.tags && p.tags.includes(selectedTag.value)
+      })
     })
   }
   
@@ -405,11 +440,24 @@ const editEvent = (event) => {
   showAddDialog.value = true
 }
 
-// 图片预览
-const previewImage = (url) => {
-  // 创建一个新窗口预览图片
-  window.open(url, '_blank')
+// 监听路由 query.edit，自动打开编辑对话框
+const checkEditQuery = () => {
+  const editId = route.query.edit
+  if (editId) {
+    const event = store.events.find(e => e.id === editId)
+    if (event) {
+      editEvent(event)
+    }
+  }
 }
+
+onMounted(() => {
+  checkEditQuery()
+})
+
+watch(() => route.query.edit, () => {
+  checkEditQuery()
+})
 
 // 保存事件
 const saveEvent = () => {
@@ -482,6 +530,22 @@ const deleteEvent = async (event) => {
 
 .search-card {
   margin-bottom: 20px;
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.filter-item {
+  flex: 1;
+  min-width: 140px;
+}
+
+.filter-btn {
+  flex-shrink: 0;
 }
 
 .events-list {
@@ -648,6 +712,23 @@ const deleteEvent = async (event) => {
 }
 
 @media (max-width: 768px) {
+  .filter-bar {
+    gap: 8px;
+  }
+
+  .filter-item {
+    min-width: 0;
+    flex: 1 1 calc(50% - 4px);
+  }
+
+  .filter-btn {
+    flex: 0 0 auto;
+  }
+
+  .btn-text {
+    display: none;
+  }
+
   .event-header {
     flex-direction: column;
     gap: 8px;

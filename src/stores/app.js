@@ -8,6 +8,11 @@ export const useAppStore = defineStore('app', () => {
   const chats = ref([])
   const tags = ref(['朋友', '家人', '同事'])
 
+  // 全局标签过滤器（不持久化，刷新即清空）
+  const globalFilterTag = ref('')
+  const setGlobalFilter = (tag) => { globalFilterTag.value = tag }
+  const clearGlobalFilter = () => { globalFilterTag.value = '' }
+
   // 生成唯一ID
   const generateId = (prefix) => {
     return `${prefix}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
@@ -28,7 +33,7 @@ export const useAppStore = defineStore('app', () => {
   const updatePerson = (personData) => {
     const index = people.value.findIndex(p => p.id === personData.id)
     if (index !== -1) {
-      people.value[index] = { ...people.value[index], ...personData, updatedAt: new Date().toISOString() }
+      people.value[index] = { ...people.value[index], ...personData }
       saveToLocalStorage()
     }
   }
@@ -61,7 +66,7 @@ export const useAppStore = defineStore('app', () => {
   const updateEvent = (eventData) => {
     const index = events.value.findIndex(e => e.id === eventData.id)
     if (index !== -1) {
-      events.value[index] = { ...events.value[index], ...eventData, updatedAt: new Date().toISOString() }
+      events.value[index] = { ...events.value[index], ...eventData }
       saveToLocalStorage()
     }
   }
@@ -87,7 +92,7 @@ export const useAppStore = defineStore('app', () => {
   const updateChat = (chatData) => {
     const index = chats.value.findIndex(c => c.id === chatData.id)
     if (index !== -1) {
-      chats.value[index] = { ...chats.value[index], ...chatData, updatedAt: new Date().toISOString() }
+      chats.value[index] = { ...chats.value[index], ...chatData }
       saveToLocalStorage()
     }
   }
@@ -237,13 +242,12 @@ export const useAppStore = defineStore('app', () => {
       events: events.value,
       chats: chats.value,
       tags: tags.value,
-      exportTime: new Date().toISOString(),
-      syncTime: new Date().toISOString()
+      exportTime: new Date().toISOString()
     }
     return JSON.stringify(data, null, 2)
   }
 
-  // 导入数据（覆盖模式）
+  // 导入数据
   const importData = (jsonData) => {
     try {
       const data = JSON.parse(jsonData)
@@ -256,52 +260,6 @@ export const useAppStore = defineStore('app', () => {
     } catch (error) {
       console.error('导入数据失败:', error)
       return false
-    }
-  }
-
-  // 智能合并数据（按 ID 取并集，同 ID 取 updatedAt 较新的）
-  const mergeData = (jsonData) => {
-    try {
-      const remote = JSON.parse(jsonData)
-
-      // 合并数组：按 id 取并集，同 id 保留更新时间较晚的
-      const mergeArray = (localArr, remoteArr) => {
-        const map = new Map()
-        // 先放入本地数据
-        for (const item of localArr) {
-          map.set(item.id, item)
-        }
-        // 再用远端数据合并
-        for (const item of remoteArr) {
-          const existing = map.get(item.id)
-          if (!existing) {
-            // 本地没有，直接新增
-            map.set(item.id, item)
-          } else {
-            // 两边都有，取 updatedAt 较新的；没有 updatedAt 则比较 createdAt
-            const localTime = existing.updatedAt || existing.createdAt || ''
-            const remoteTime = item.updatedAt || item.createdAt || ''
-            if (remoteTime > localTime) {
-              map.set(item.id, item)
-            }
-          }
-        }
-        return Array.from(map.values())
-      }
-
-      people.value = mergeArray(people.value, remote.people || [])
-      events.value = mergeArray(events.value, remote.events || [])
-      chats.value = mergeArray(chats.value, remote.chats || [])
-
-      // 标签取并集去重
-      const mergedTags = new Set([...tags.value, ...(remote.tags || [])])
-      tags.value = Array.from(mergedTags)
-
-      saveToLocalStorage()
-      return { success: true, message: '数据合并完成' }
-    } catch (error) {
-      console.error('合并数据失败:', error)
-      return { success: false, message: '合并失败: ' + error.message }
     }
   }
 
@@ -341,10 +299,14 @@ export const useAppStore = defineStore('app', () => {
     getTimelineByPerson,
     getTimelineByTag,
     
+    // 全局过滤
+    globalFilterTag,
+    setGlobalFilter,
+    clearGlobalFilter,
+    
     // 数据操作
     exportData,
     importData,
-    mergeData,
     saveToLocalStorage
   }
 })

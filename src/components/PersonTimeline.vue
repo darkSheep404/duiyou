@@ -22,7 +22,12 @@
                     {{ item.eventType }}
                   </el-tag>
                 </div>
-                <el-tag type="info" size="small">事件</el-tag>
+                <div class="item-header-right">
+                  <el-button size="small" circle @click="goEditEvent(item)">
+                    <el-icon><Edit /></el-icon>
+                  </el-button>
+                  <el-tag type="info" size="small">事件</el-tag>
+                </div>
               </div>
               
               <!-- 多人物显示 -->
@@ -59,14 +64,16 @@
               <!-- 图片附件 -->
               <div v-if="item.attachments && item.attachments.length" class="item-attachments">
                 <div class="attachment-grid">
-                  <div
-                    v-for="(attachment, index) in item.attachments"
+                  <el-image
+                    v-for="(attachment, index) in item.attachments.filter(a => a.type === 'image' || !a.type)"
                     :key="index"
-                    class="attachment-item"
-                    @click="previewImage(attachment.url)"
-                  >
-                    <img :src="attachment.url" :alt="attachment.name" />
-                  </div>
+                    :src="attachment.url"
+                    fit="cover"
+                    class="attachment-item-img"
+                    :preview-src-list="item.attachments.filter(a => a.type === 'image' || !a.type).map(a => a.url)"
+                    :initial-index="index"
+                    preview-teleported
+                  />
                 </div>
               </div>
               
@@ -89,9 +96,14 @@
                   <el-icon class="item-icon"><ChatDotRound /></el-icon>
                   <h4>聊天记录</h4>
                 </div>
-                <el-tag :type="getChatTypeColor(item.chatType)" size="small">
-                  {{ item.chatType || item.type }}
-                </el-tag>
+                <div class="item-header-right">
+                  <el-button size="small" circle @click="goEditChat(item)">
+                    <el-icon><Edit /></el-icon>
+                  </el-button>
+                  <el-tag :type="getChatTypeColor(item.chatType)" size="small">
+                    {{ item.chatType || item.type }}
+                  </el-tag>
+                </div>
               </div>
               
               <!-- 多人物显示 -->
@@ -121,14 +133,16 @@
               <!-- 图片附件 -->
               <div v-if="item.attachments && item.attachments.length" class="item-attachments">
                 <div class="attachment-grid">
-                  <div
-                    v-for="(attachment, index) in item.attachments"
+                  <el-image
+                    v-for="(attachment, index) in item.attachments.filter(a => a.type === 'image' || !a.type)"
                     :key="index"
-                    class="attachment-item"
-                    @click="previewImage(attachment.url)"
-                  >
-                    <img :src="attachment.url" :alt="attachment.name" />
-                  </div>
+                    :src="attachment.url"
+                    fit="cover"
+                    class="attachment-item-img"
+                    :preview-src-list="item.attachments.filter(a => a.type === 'image' || !a.type).map(a => a.url)"
+                    :initial-index="index"
+                    preview-teleported
+                  />
                 </div>
               </div>
             </div>
@@ -146,8 +160,9 @@
 
 <script setup>
 import { computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAppStore } from '../stores/app'
-import { Calendar, ChatDotRound, Location } from '@element-plus/icons-vue'
+import { Calendar, ChatDotRound, Location, Edit } from '@element-plus/icons-vue'
 
 const props = defineProps({
   personId: {
@@ -156,6 +171,7 @@ const props = defineProps({
   }
 })
 
+const router = useRouter()
 const store = useAppStore()
 
 // 获取该人物的时间线数据
@@ -163,9 +179,13 @@ const timelineItems = computed(() => {
   return store.getTimelineByPerson(props.personId)
 })
 
-// 图片预览
-const previewImage = (url) => {
-  window.open(url, '_blank')
+// 编辑事件/聊天
+const goEditEvent = (item) => {
+  router.push({ path: '/events', query: { edit: item.id } })
+}
+
+const goEditChat = (item) => {
+  router.push({ path: '/chats', query: { edit: item.id } })
 }
 
 // 格式化日期时间
@@ -230,6 +250,12 @@ const getChatTypeColor = (type) => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
+}
+
+.item-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .item-title {
@@ -314,23 +340,15 @@ const getChatTypeColor = (type) => {
   max-width: 100%;
 }
 
-.attachment-item {
-  position: relative;
-  overflow: hidden;
+.attachment-item-img {
+  width: 100%;
+  aspect-ratio: 1;
   border-radius: 8px;
   cursor: pointer;
-  transition: transform 0.2s;
-  aspect-ratio: 1;
+  overflow: hidden;
 }
 
-.attachment-item:hover {
-  transform: scale(1.02);
-}
-
-.attachment-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.attachment-item-img :deep(img) {
   border-radius: 8px;
 }
 

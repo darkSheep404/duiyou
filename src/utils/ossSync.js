@@ -1,4 +1,5 @@
 import { loadConfig } from '../config'
+import { logInfo, logError } from './logger'
 
 /**
  * 检查 OSS 是否已配置
@@ -41,12 +42,15 @@ export async function uploadToOss(jsonString) {
     })
 
     if (response.ok) {
+      logInfo('上传到云端成功')
       return { success: true, message: '数据已上传到云端' }
     } else {
       const text = await response.text()
+      logError(`上传失败 (${response.status})`, text)
       return { success: false, message: `上传失败 (${response.status}): ${text}` }
     }
   } catch (error) {
+    logError('上传异常', error.message)
     return { success: false, message: '上传失败: ' + error.message }
   }
 }
@@ -74,11 +78,14 @@ export async function downloadFromOss() {
         lastModified
       }
     } else if (response.status === 404) {
+      logError('云端暂无备份数据 (404)')
       return { success: false, message: '云端暂无备份数据' }
     } else {
+      logError(`下载失败 (${response.status})`)
       return { success: false, message: `下载失败 (${response.status})` }
     }
   } catch (error) {
+    logError('下载异常', error.message)
     return { success: false, message: '下载失败: ' + error.message }
   }
 }
@@ -102,8 +109,10 @@ export async function checkOssBackup() {
         size: parseInt(response.headers.get('Content-Length') || '0', 10)
       }
     }
+    logError('检查云端备份: 不存在或状态异常')
     return { exists: false }
-  } catch {
+  } catch (error) {
+    logError('检查云端备份异常', error?.message || error)
     return { exists: false }
   }
 }

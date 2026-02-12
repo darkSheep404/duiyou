@@ -2,40 +2,48 @@
   <div class="chats-page">
     <!-- 搜索和筛选栏 -->
     <el-card class="search-card">
-      <el-row :gutter="20">
-        <el-col :xs="24" :sm="8">
-          <el-input
-            v-model="searchText"
-            placeholder="搜索聊天记录..."
-            clearable
-          >
-            <template #prefix>
-              <el-icon><Search /></el-icon>
-            </template>
-          </el-input>
-        </el-col>
-        <el-col :xs="24" :sm="8">
-          <el-select
-            v-model="selectedPerson"
-            placeholder="按人物筛选"
-            clearable
-            style="width: 100%"
-          >
-            <el-option
-              v-for="person in store.people"
-              :key="person.id"
-              :label="person.name"
-              :value="person.id"
-            />
-          </el-select>
-        </el-col>
-        <el-col :xs="24" :sm="8">
-          <el-button type="primary" @click="showAddDialog = true" style="width: 100%">
-            <el-icon><Plus /></el-icon>
-            添加聊天记录
-          </el-button>
-        </el-col>
-      </el-row>
+      <div class="filter-bar">
+        <el-input
+          v-model="searchText"
+          placeholder="搜索聊天记录..."
+          clearable
+          class="filter-item"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+        <el-select
+          v-model="selectedPerson"
+          placeholder="按人物筛选"
+          clearable
+          class="filter-item"
+        >
+          <el-option
+            v-for="person in store.people"
+            :key="person.id"
+            :label="person.name"
+            :value="person.id"
+          />
+        </el-select>
+        <el-select
+          v-model="selectedTag"
+          placeholder="按标签筛选"
+          clearable
+          class="filter-item"
+        >
+          <el-option
+            v-for="tag in store.tags"
+            :key="tag"
+            :label="tag"
+            :value="tag"
+          />
+        </el-select>
+        <el-button type="primary" @click="showAddDialog = true" class="filter-btn">
+          <el-icon><Plus /></el-icon>
+          <span class="btn-text">添加聊天记录</span>
+        </el-button>
+      </div>
     </el-card>
 
     <!-- 聊天记录列表 -->
@@ -110,16 +118,16 @@
           <p>{{ chat.content }}</p>
           
           <div v-if="chat.attachments && chat.attachments.length" class="chat-attachments">
-            <div 
-              v-for="(attachment, index) in chat.attachments" 
-              :key="index"
-              class="attachment-preview"
-            >
-              <img 
-                v-if="attachment.type === 'image'"
-                :src="attachment.url" 
+            <div class="attachment-preview">
+              <el-image
+                v-for="(attachment, index) in chat.attachments.filter(a => a.type === 'image')"
+                :key="index"
+                :src="attachment.url"
+                fit="cover"
                 class="attachment-thumbnail"
-                @click="previewImage(attachment.url)"
+                :preview-src-list="chat.attachments.filter(a => a.type === 'image').map(a => a.url)"
+                :initial-index="index"
+                preview-teleported
               />
             </div>
           </div>
@@ -223,16 +231,19 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive } from 'vue'
+import { ref, computed, reactive, onMounted, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import { useAppStore } from '../stores/app'
 import { ElMessageBox, ElMessage } from 'element-plus'
 import { Search, Plus, Edit, Delete, Upload } from '@element-plus/icons-vue'
 
+const route = useRoute()
 const store = useAppStore()
 
 // 搜索和筛选
 const searchText = ref('')
 const selectedPerson = ref('')
+const selectedTag = ref('')
 
 // 对话框控制
 const showAddDialog = ref(false)
@@ -251,6 +262,17 @@ const formData = reactive({
 const filteredChats = computed(() => {
   let result = [...store.chats].sort((a, b) => new Date(b.time) - new Date(a.time))
   
+  // 全局标签过滤
+  if (store.globalFilterTag) {
+    result = result.filter(chat => {
+      const personIds = chat.person_ids || [chat.person_id].filter(Boolean)
+      return personIds.some(id => {
+        const p = store.getPersonById(id)
+        return p && p.tags && p.tags.includes(store.globalFilterTag)
+      })
+    })
+  }
+  
   if (searchText.value) {
     const search = searchText.value.toLowerCase()
     result = result.filter(chat => 
@@ -260,8 +282,19 @@ const filteredChats = computed(() => {
   
   if (selectedPerson.value) {
     result = result.filter(chat => {
-      const personIds = chat.person_ids || [chat.person_id].filter(Boolean) // 兼容旧数据
+      const personIds = chat.person_ids || [chat.person_id].filter(Boolean)
       return personIds.includes(selectedPerson.value)
+    })
+  }
+
+  // 标签筛选
+  if (selectedTag.value) {
+    result = result.filter(chat => {
+      const personIds = chat.person_ids || [chat.person_id].filter(Boolean)
+      return personIds.some(id => {
+        const p = store.getPersonById(id)
+        return p && p.tags && p.tags.includes(selectedTag.value)
+      })
     })
   }
   
@@ -377,10 +410,24 @@ const saveChat = () => {
   resetForm()
 }
 
-// 图片预览
-const previewImage = (url) => {
-  window.open(url, '_blank')
+// 监听路由 query.edit，自动打开编辑对话框
+const checkEditQuery = () => {
+  const editId = route.query.edit
+  if (editId) {
+    const chat = store.chats.find(c => c.id === editId)
+    if (chat) {
+      editChat(chat)
+    }
+  }
 }
+
+onMounted(() => {
+  checkEditQuery()
+})
+
+watch(() => route.query.edit, () => {
+  checkEditQuery()
+})
 
 // 删除聊天记录
 const deleteChat = async (chat) => {
@@ -410,6 +457,22 @@ const deleteChat = async (chat) => {
 
 .search-card {
   margin-bottom: 20px;
+}
+
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.filter-item {
+  flex: 1;
+  min-width: 140px;
+}
+
+.filter-btn {
+  flex-shrink: 0;
 }
 
 .chats-list {
@@ -548,6 +611,23 @@ const deleteChat = async (chat) => {
 }
 
 @media (max-width: 768px) {
+  .filter-bar {
+    gap: 8px;
+  }
+
+  .filter-item {
+    min-width: 0;
+    flex: 1 1 calc(50% - 4px);
+  }
+
+  .filter-btn {
+    flex: 0 0 auto;
+  }
+
+  .btn-text {
+    display: none;
+  }
+
   .chat-header {
     flex-direction: column;
     align-items: flex-start;

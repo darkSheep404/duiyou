@@ -2,40 +2,35 @@
   <div class="people-page">
     <!-- 搜索和筛选栏 -->
     <el-card class="search-card">
-      <el-row :gutter="20">
-        <el-col :xs="24" :sm="12" :md="8">
-          <el-input
-            v-model="searchText"
-            placeholder="搜索人物..."
-            clearable
-          >
-            <template #prefix>
-              <el-icon><Search /></el-icon>
-            </template>
-          </el-input>
-        </el-col>
-        <el-col :xs="24" :sm="12" :md="8">
-          <el-select
-            v-model="selectedTag"
-            placeholder="按标签筛选"
-            clearable
-            style="width: 100%"
-          >
-            <el-option
-              v-for="tag in store.tags"
-              :key="tag"
-              :label="tag"
-              :value="tag"
-            />
-          </el-select>
-        </el-col>
-        <el-col :xs="24" :sm="24" :md="8">
-          <el-button type="primary" @click="showAddDialog = true" style="width: 100%">
-            <el-icon><Plus /></el-icon>
-            添加人物
-          </el-button>
-        </el-col>
-      </el-row>
+      <div class="filter-bar">
+        <el-input
+          v-model="searchText"
+          placeholder="搜索人物..."
+          clearable
+          class="filter-item"
+        >
+          <template #prefix>
+            <el-icon><Search /></el-icon>
+          </template>
+        </el-input>
+        <el-select
+          v-model="selectedTag"
+          placeholder="按标签筛选"
+          clearable
+          class="filter-item"
+        >
+          <el-option
+            v-for="tag in store.tags"
+            :key="tag"
+            :label="tag"
+            :value="tag"
+          />
+        </el-select>
+        <el-button type="primary" @click="showAddDialog = true" class="filter-btn">
+          <el-icon><Plus /></el-icon>
+          <span class="btn-text">添加人物</span>
+        </el-button>
+      </div>
     </el-card>
 
     <!-- 人物列表 -->
@@ -233,6 +228,13 @@ const formData = reactive({
 const filteredPeople = computed(() => {
   let result = store.people
   
+  // 全局标签过滤
+  if (store.globalFilterTag) {
+    result = result.filter(person =>
+      person.tags && person.tags.includes(store.globalFilterTag)
+    )
+  }
+  
   if (searchText.value) {
     const search = searchText.value.toLowerCase()
     result = result.filter(person => 
@@ -366,6 +368,22 @@ const handleDialogClose = () => {
   margin-bottom: 20px;
 }
 
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.filter-item {
+  flex: 1;
+  min-width: 140px;
+}
+
+.filter-btn {
+  flex-shrink: 0;
+}
+
 .people-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
@@ -479,25 +497,73 @@ const handleDialogClose = () => {
 
 @media (max-width: 768px) {
   .people-grid {
-    grid-template-columns: 1fr;
-    gap: 12px;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 10px;
   }
   
   .person-content {
     flex-direction: column;
     align-items: center;
     text-align: center;
+    padding: 4px;
+  }
+  
+  .avatar-img {
+    width: 48px;
+    height: 48px;
+  }
+
+  .person-info h3 {
+    font-size: 14px;
+  }
+
+  .nickname {
+    font-size: 12px;
+    margin-bottom: 4px;
+  }
+
+  .description {
+    font-size: 12px;
+    margin-bottom: 6px;
+    -webkit-line-clamp: 1;
+    line-clamp: 1;
+  }
+
+  .person-tags .el-tag {
+    transform: scale(0.85);
+    margin-right: 2px !important;
+  }
+
+  .contact-info {
+    font-size: 11px;
   }
   
   .person-actions {
     position: static;
     justify-content: center;
-    margin-top: 10px;
+    margin-top: 6px;
   }
   
   .avatar-upload {
     flex-direction: column;
     align-items: center;
+  }
+
+  .filter-bar {
+    gap: 8px;
+  }
+
+  .filter-item {
+    min-width: 0;
+    flex: 1 1 calc(50% - 4px);
+  }
+
+  .filter-btn {
+    flex: 0 0 auto;
+  }
+
+  .btn-text {
+    display: none;
   }
 }
 </style>

@@ -94,10 +94,16 @@
       <template #header>
         <div class="card-header">
           <span>☁️ 云端同步</span>
-          <el-button v-if="ossConfigured" size="small" text @click="refreshCloudStatus" :loading="checkingCloud">
-            <el-icon><Refresh /></el-icon>
-            刷新状态
-          </el-button>
+          <div class="card-header-actions">
+            <el-button size="small" text @click="$router.push('/logs')">
+              <el-icon><Document /></el-icon>
+              同步日志
+            </el-button>
+            <el-button v-if="ossConfigured" size="small" text @click="refreshCloudStatus" :loading="checkingCloud">
+              <el-icon><Refresh /></el-icon>
+              刷新状态
+            </el-button>
+          </div>
         </div>
       </template>
 
@@ -206,7 +212,7 @@
 import { ref, computed, onMounted, reactive } from 'vue'
 import { useAppStore } from '../stores/app'
 import { ElMessageBox, ElMessage } from 'element-plus'
-import { Plus, Edit, Delete, Download, Upload, Refresh } from '@element-plus/icons-vue'
+import { Plus, Edit, Delete, Download, Upload, Refresh, Document } from '@element-plus/icons-vue'
 import { getPlatform } from '../utils/platform'
 import { exportToFile, importFromFile } from '../utils/fileHelper'
 import { uploadToOss, downloadFromOss, checkOssBackup, formatGmtTime, isOssConfigured } from '../utils/ossSync'
@@ -576,6 +582,12 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.card-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .stat-item {

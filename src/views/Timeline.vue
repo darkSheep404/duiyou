@@ -2,49 +2,43 @@
   <div class="timeline-page">
     <!-- 筛选栏 -->
     <el-card class="filter-card">
-      <el-row :gutter="20">
-        <el-col :xs="24" :sm="8">
-          <el-select
-            v-model="selectedPerson"
-            placeholder="按人物筛选"
-            clearable
-            style="width: 100%"
-          >
-            <el-option
-              v-for="person in store.people"
-              :key="person.id"
-              :label="person.name"
-              :value="person.id"
-            />
-          </el-select>
-        </el-col>
-        <el-col :xs="24" :sm="8">
-          <el-select
-            v-model="selectedTag"
-            placeholder="按标签筛选"
-            clearable
-            style="width: 100%"
-          >
-            <el-option
-              v-for="tag in store.tags"
-              :key="tag"
-              :label="tag"
-              :value="tag"
-            />
-          </el-select>
-        </el-col>
-        <el-col :xs="24" :sm="8">
-          <el-select
-            v-model="selectedType"
-            placeholder="按类型筛选"
-            clearable
-            style="width: 100%"
-          >
-            <el-option label="事件" value="event" />
-            <el-option label="聊天记录" value="chat" />
-          </el-select>
-        </el-col>
-      </el-row>
+      <div class="filter-bar">
+        <el-select
+          v-model="selectedPerson"
+          placeholder="按人物筛选"
+          clearable
+          class="filter-item"
+        >
+          <el-option
+            v-for="person in store.people"
+            :key="person.id"
+            :label="person.name"
+            :value="person.id"
+          />
+        </el-select>
+        <el-select
+          v-model="selectedTag"
+          placeholder="按标签筛选"
+          clearable
+          class="filter-item"
+        >
+          <el-option
+            v-for="tag in store.tags"
+            :key="tag"
+            :label="tag"
+            :value="tag"
+          />
+        </el-select>
+        <el-select
+          v-model="selectedType"
+          placeholder="按类型筛选"
+          clearable
+          class="filter-item"
+        >
+          <el-option label="事件" value="event" />
+          <el-option label="聊天记录" value="chat" />
+        </el-select>
+      </div>
     </el-card>
 
     <!-- 时间线 -->
@@ -69,7 +63,12 @@
                     {{ item.eventType }}
                   </el-tag>
                 </div>
-                <el-tag type="info" size="small">事件</el-tag>
+                <div class="item-header-right">
+                  <el-button size="small" circle @click="goEditEvent(item)">
+                    <el-icon><Edit /></el-icon>
+                  </el-button>
+                  <el-tag type="info" size="small">事件</el-tag>
+                </div>
               </div>
               
               <!-- 多人物显示 -->
@@ -121,14 +120,16 @@
               <!-- 图片附件 -->
               <div v-if="item.attachments && item.attachments.length" class="item-attachments">
                 <div class="attachment-grid">
-                  <div
-                    v-for="(attachment, index) in item.attachments"
+                  <el-image
+                    v-for="(attachment, index) in item.attachments.filter(a => a.type === 'image' || !a.type)"
                     :key="index"
-                    class="attachment-item"
-                    @click="previewImage(attachment.url)"
-                  >
-                    <img :src="attachment.url" :alt="attachment.name" />
-                  </div>
+                    :src="attachment.url"
+                    fit="cover"
+                    class="attachment-item-img"
+                    :preview-src-list="item.attachments.filter(a => a.type === 'image' || !a.type).map(a => a.url)"
+                    :initial-index="index"
+                    preview-teleported
+                  />
                 </div>
               </div>
               
@@ -151,9 +152,14 @@
                   <el-icon class="item-icon"><ChatDotRound /></el-icon>
                   <h4>聊天记录</h4>
                 </div>
-                <el-tag :type="getChatTypeColor(item.chatType)" size="small">
-                  {{ item.chatType || item.type }}
-                </el-tag>
+                <div class="item-header-right">
+                  <el-button size="small" circle @click="goEditChat(item)">
+                    <el-icon><Edit /></el-icon>
+                  </el-button>
+                  <el-tag :type="getChatTypeColor(item.chatType)" size="small">
+                    {{ item.chatType || item.type }}
+                  </el-tag>
+                </div>
               </div>
               
               <!-- 多人物显示 -->
@@ -198,14 +204,16 @@
               <!-- 图片附件 -->
               <div v-if="item.attachments && item.attachments.length" class="item-attachments">
                 <div class="attachment-grid">
-                  <div
-                    v-for="(attachment, index) in item.attachments"
+                  <el-image
+                    v-for="(attachment, index) in item.attachments.filter(a => a.type === 'image' || !a.type)"
                     :key="index"
-                    class="attachment-item"
-                    @click="previewImage(attachment.url)"
-                  >
-                    <img :src="attachment.url" :alt="attachment.name" />
-                  </div>
+                    :src="attachment.url"
+                    fit="cover"
+                    class="attachment-item-img"
+                    :preview-src-list="item.attachments.filter(a => a.type === 'image' || !a.type).map(a => a.url)"
+                    :initial-index="index"
+                    preview-teleported
+                  />
                 </div>
               </div>
             </div>
@@ -223,9 +231,11 @@
 
 <script setup>
 import { ref, computed } from 'vue'
+import { useRouter } from 'vue-router'
 import { useAppStore } from '../stores/app'
-import { Calendar, ChatDotRound, Location } from '@element-plus/icons-vue'
+import { Calendar, ChatDotRound, Location, Edit } from '@element-plus/icons-vue'
 
+const router = useRouter()
 const store = useAppStore()
 
 // 筛选条件
@@ -236,6 +246,16 @@ const selectedType = ref('')
 // 筛选后的时间线数据
 const filteredTimeline = computed(() => {
   let result = store.timelineItems
+  
+  // 全局标签过滤
+  if (store.globalFilterTag) {
+    result = result.filter(item => {
+      if (item.tags && item.tags.includes(store.globalFilterTag)) return true
+      if (item.people && item.people.some(p => p.tags && p.tags.includes(store.globalFilterTag))) return true
+      if (item.person && item.person.tags && item.person.tags.includes(store.globalFilterTag)) return true
+      return false
+    })
+  }
   
   // 按人物筛选
   if (selectedPerson.value) {
@@ -276,9 +296,13 @@ const filteredTimeline = computed(() => {
   return result
 })
 
-// 图片预览
-const previewImage = (url) => {
-  window.open(url, '_blank')
+// 编辑事件 - 跳转到事件页并打开编辑
+const goEditEvent = (item) => {
+  router.push({ path: '/events', query: { edit: item.id } })
+}
+
+const goEditChat = (item) => {
+  router.push({ path: '/chats', query: { edit: item.id } })
 }
 
 // 格式化日期时间
@@ -328,6 +352,18 @@ const getChatTypeColor = (type) => {
   margin-bottom: 20px;
 }
 
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: center;
+}
+
+.filter-item {
+  flex: 1;
+  min-width: 140px;
+}
+
 .timeline-container {
   max-width: 800px;
   margin: 0 auto;
@@ -347,6 +383,12 @@ const getChatTypeColor = (type) => {
   justify-content: space-between;
   align-items: center;
   margin-bottom: 12px;
+}
+
+.item-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
 }
 
 .item-title {
@@ -436,23 +478,15 @@ const getChatTypeColor = (type) => {
   max-width: 100%;
 }
 
-.attachment-item {
-  position: relative;
-  overflow: hidden;
+.attachment-item-img {
+  width: 100%;
+  aspect-ratio: 1;
   border-radius: 8px;
   cursor: pointer;
-  transition: transform 0.2s;
-  aspect-ratio: 1;
+  overflow: hidden;
 }
 
-.attachment-item:hover {
-  transform: scale(1.02);
-}
-
-.attachment-item img {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
+.attachment-item-img :deep(img) {
   border-radius: 8px;
 }
 
@@ -473,6 +507,15 @@ const getChatTypeColor = (type) => {
 
 /* 移动端适配 */
 @media (max-width: 768px) {
+  .filter-bar {
+    gap: 8px;
+  }
+
+  .filter-item {
+    min-width: 0;
+    flex: 1 1 calc(50% - 4px);
+  }
+
   .timeline-container {
     padding: 0 10px;
   }

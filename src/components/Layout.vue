@@ -29,6 +29,10 @@
           <el-icon><Clock /></el-icon>
           <span>时间线</span>
         </el-menu-item>
+        <el-menu-item index="/wander">
+          <el-icon><MagicStick /></el-icon>
+          <span>漫步</span>
+        </el-menu-item>
         <el-menu-item index="/settings">
           <el-icon><Setting /></el-icon>
           <span>设置</span>
@@ -42,12 +46,34 @@
         <div class="header-content">
           <h3 class="page-title">{{ $route.meta.title || '鼠鼠友人帐' }}</h3>
           <div class="header-actions">
+              <el-select
+                v-model="globalTag"
+                placeholder="全局标签筛选"
+                clearable
+                size="small"
+                style="width: 150px;"
+                @change="onGlobalFilterChange"
+                @clear="onGlobalFilterClear"
+              >
+                <el-option
+                  v-for="tag in store.tags"
+                  :key="tag"
+                  :label="tag"
+                  :value="tag"
+                />
+              </el-select>
               <el-button type="text" @click="$router.push('/settings')">
                 <el-icon><User /></el-icon>
               </el-button>
           </div>
         </div>
       </el-header>
+
+      <!-- 全局过滤提示条 -->
+      <div v-if="store.globalFilterTag" class="global-filter-bar">
+        <span>🌍 正在按标签「{{ store.globalFilterTag }}」筛选全部数据</span>
+        <el-button type="primary" link size="small" @click="onGlobalFilterClear">清除筛选</el-button>
+      </div>
 
       <!-- 主内容区域 -->
       <el-main class="main-content">
@@ -80,18 +106,40 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useAppStore } from '../stores/app'
-import { User, Calendar, ChatDotRound, Clock, Setting } from '@element-plus/icons-vue'
+import { User, Calendar, ChatDotRound, Clock, Setting, MagicStick } from '@element-plus/icons-vue'
 
 const store = useAppStore()
 const people = computed(() => store.people)
+
+// 全局标签筛选
+const globalTag = ref(store.globalFilterTag || '')
+
+const onGlobalFilterChange = (val) => {
+  if (val) {
+    store.setGlobalFilter(val)
+  } else {
+    store.clearGlobalFilter()
+  }
+}
+
+const onGlobalFilterClear = () => {
+  globalTag.value = ''
+  store.clearGlobalFilter()
+}
+
+// 同步 store 变更
+watch(() => store.globalFilterTag, (val) => {
+  globalTag.value = val
+})
 
 const navItems = [
   { path: '/people', title: '人物', icon: 'User' },
   { path: '/events', title: '事件', icon: 'Calendar' },
   { path: '/chats', title: '聊天', icon: 'ChatDotRound' },
   { path: '/timeline', title: '时间线', icon: 'Clock' },
+  { path: '/wander', title: '漫步', icon: 'MagicStick' },
   { path: '/settings', title: '设置', icon: 'Setting' }
 ]
 </script>
@@ -195,5 +243,18 @@ const navItems = [
     padding: 10px;
     margin-bottom: 70px;
   }
+}
+
+.global-filter-bar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: linear-gradient(90deg, #e8f4fd, #d9ecff);
+  color: #409eff;
+  font-size: 13px;
+  font-weight: 500;
+  border-bottom: 1px solid #b3d8ff;
 }
 </style>

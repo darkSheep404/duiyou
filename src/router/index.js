@@ -6,6 +6,8 @@ import Chats from '../views/Chats.vue'
 import Timeline from '../views/Timeline.vue'
 import Settings from '../views/Settings.vue'
 import PersonDetail from '../views/PersonDetail.vue'
+import Logs from '../views/Logs.vue'
+import Wander from '../views/Wander.vue'
 
 const routes = [
   {
@@ -48,6 +50,18 @@ const routes = [
         name: 'Settings',
         component: Settings,
         meta: { title: '设置' }
+      },
+      {
+        path: '/logs',
+        name: 'Logs',
+        component: Logs,
+        meta: { title: '同步日志' }
+      },
+      {
+        path: '/wander',
+        name: 'Wander',
+        component: Wander,
+        meta: { title: '漫步' }
       }
     ]
   }
