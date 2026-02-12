@@ -20,11 +20,6 @@ function getOssUrl() {
     throw new Error('未配置 OSS 地址，请先在同步设置中填写')
   }
   const fileName = config.ossFileName || 'duiyou-backup.json'
-
-  // 开发模式：通过 Vite 代理绕过 CORS（APK/生产环境直连）
-  if (import.meta.env.DEV) {
-    return `/oss-proxy/${fileName}`
-  }
   return `${baseUrl}/${fileName}`
 }
 
@@ -66,10 +61,7 @@ export async function downloadFromOss() {
   try {
     // 加时间戳防止缓存
     const response = await fetch(`${url}?t=${Date.now()}`, {
-      method: 'GET',
-      headers: {
-        'Cache-Control': 'no-cache'
-      }
+      method: 'GET'
     })
 
     if (response.ok) {
@@ -100,10 +92,7 @@ export async function checkOssBackup() {
 
   try {
     const response = await fetch(`${url}?t=${Date.now()}`, {
-      method: 'HEAD',
-      headers: {
-        'Cache-Control': 'no-cache'
-      }
+      method: 'HEAD'
     })
 
     if (response.ok) {

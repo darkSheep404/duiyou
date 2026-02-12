@@ -30,6 +30,87 @@ jobs:
       - name: Add Capacitor Android platform
         run: npx cap add android
 
+      - name: Inject release signing config
+        run: |
+          # 在 android { 之后插入 signingConfigs 块
+          sed -i '/^android {$/a\
+    signingConfigs {\
+        release {\
+            storeFile file("../../duiyou-release.keystore")\
+            storePassword "duiyou123"\
+            keyAlias "duiyou"\
+            keyPassword "duiyou123"\
+        }\
+    }' android/app/build.gradle
+          # 在 release buildType 中添加 signingConfig
+          sed -i '/minifyEnabled false/a\
+            signingConfig signingConfigs.release' android/app/build.gradle
+          # 用 CI 构建号作为 versionCode
+          sed -i "s/versionCode 1/versionCode ${{ github.run_number }}/" android/app/build.gradle
+          echo "--- Patched build.gradle ---"
+          cat android/app/build.gradle
+
+      - name: Generate Android app icons from icon.png
+        run: |
+          sudo apt-get install -y imagemagick
+          ICON_SRC="public/icon.png"
+          RES_DIR="android/app/src/main/res"
+          # 生成各 DPI 启动图标（圆角 + 圆形）
+          for size_dir in "mdpi:48" "hdpi:72" "xhdpi:96" "xxhdpi:144" "xxxhdpi:192"; do
+            dir="${size_dir%%:*}"
+            size="${size_dir##*:}"
+            mkdir -p "$RES_DIR/mipmap-$dir"
+            convert "$ICON_SRC" -resize ${size}x${size} "$RES_DIR/mipmap-$dir/ic_launcher.png"
+            convert "$ICON_SRC" -resize ${size}x${size} \
+              \( +clone -threshold -1 -negate -fill white -draw "circle $((size/2)),$((size/2)) $((size/2)),0" \) \
+              -alpha off -compose copy_opacity -composite \
+              "$RES_DIR/mipmap-$dir/ic_launcher_round.png"
+          done
+          # 生成前景图用于自适应图标（所有密度）
+          for fg_dir in "mdpi:108" "hdpi:162" "xhdpi:216" "xxhdpi:324" "xxxhdpi:432"; do
+            dir="${fg_dir%%:*}"
+            size="${fg_dir##*:}"
+            mkdir -p "$RES_DIR/mipmap-$dir"
+            convert "$ICON_SRC" -resize ${size}x${size} -gravity center -background none -extent ${size}x${size} \
+              "$RES_DIR/mipmap-$dir/ic_launcher_foreground.png"
+          done
+          # 删除默认矢量图标（防止覆盖自定义 PNG）
+          rm -f "$RES_DIR/drawable-v24/ic_launcher_foreground.xml"
+          rm -f "$RES_DIR/drawable/ic_launcher_background.xml"
+
+      - name: Generate splash screen resources
+        run: |
+          ICON_SRC="public/icon.png"
+          RES_DIR="android/app/src/main/res"
+          # 生成各 DPI 启动页居中 logo
+          for size_dir in "mdpi:120" "hdpi:180" "xhdpi:240" "xxhdpi:360" "xxxhdpi:480"; do
+            dir="${size_dir%%:*}"
+            size="${size_dir##*:}"
+            mkdir -p "$RES_DIR/drawable-$dir"
+            convert "$ICON_SRC" -resize ${size}x${size} "$RES_DIR/drawable-$dir/splash.png"
+          done
+          # 启动页 XML（白色背景 + 居中 logo）
+          mkdir -p "$RES_DIR/drawable"
+          cat > "$RES_DIR/drawable/splash.xml" << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+            <item android:drawable="@color/splash_bg"/>
+            <item android:gravity="center" android:width="180dp" android:height="180dp">
+              <bitmap android:src="@drawable/splash" android:gravity="center"/>
+            </item>
+          </layer-list>
+          EOF
+          # splash 背景色
+          mkdir -p "$RES_DIR/values"
+          if ! grep -q "splash_bg" "$RES_DIR/values/colors.xml" 2>/dev/null; then
+            cat > "$RES_DIR/values/colors.xml" << 'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+            <color name="splash_bg">#FFFFFF</color>
+          </resources>
+          EOF
+          fi
+
       - name: Sync Capacitor Android
         run: npx cap sync android
 
@@ -45,9 +126,9 @@ jobs:
       - name: Make gradlew executable
         run: chmod +x android/gradlew
 
-      - name: Build Debug APK
+      - name: Build Release APK
         working-directory: android
-        run: ./gradlew assembleDebug
+        run: ./gradlew assembleRelease
 
       - name: Prepare release info
         id: info
@@ -58,7 +139,7 @@ jobs:
 
       - name: Rename APK
         run: |
-          cp android/app/build/outputs/apk/debug/app-debug.apk \
+          cp android/app/build/outputs/apk/release/app-release.apk \
              duiyou-v${{ steps.info.outputs.tag }}.apk
 
       - name: Create Release and upload APK
@@ -82,6 +163,6 @@ jobs:
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
         with:
-          name: duiyou-debug-${{ steps.info.outputs.date }}
+          name: duiyou-release-${{ steps.info.outputs.date }}
           path: duiyou-v${{ steps.info.outputs.tag }}.apk
           retention-days: 30
